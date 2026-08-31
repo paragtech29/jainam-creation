@@ -11,7 +11,8 @@
     "db:migrate": "node --env-file=.env.local node_modules/drizzle-kit/bin.cjs migrate",
     "db:smoke": "tsx --env-file=.env.local scripts/db-smoke-test.ts",
     "user:create": "tsx --env-file=.env.local scripts/create-user.ts",
-    "user:reset-password": "tsx --env-file=.env.local scripts/reset-password.ts"
+    "user:reset-password": "tsx --env-file=.env.local scripts/reset-password.ts",
+    "seed:masters": "tsx --env-file=.env.local scripts/seed-masters.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

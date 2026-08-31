@@ -19,7 +19,7 @@ export function SwitchLink({
     <Link
       href={href}
       role="switch"
-      aria-pressed={checked}
+      aria-checked={checked}
       className="flex min-h-11 items-center gap-2 py-1"
     >
       <span

@@ -16,6 +16,11 @@ dist/
 .env
 .env*.local
 
+# Stray credential files
+connection*string*
+*.secret
+*credentials*
+
 # Vercel
 .vercel
 

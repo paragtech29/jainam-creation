@@ -85,7 +85,7 @@ export function ChangePasswordForm() {
         </p>
       ) : null}
       {state?.success ? (
-        <p role="status" className="text-sm text-green-600 dark:text-green-500">
+        <p role="status" className="text-sm text-success">
           Password changed.
         </p>
       ) : null}

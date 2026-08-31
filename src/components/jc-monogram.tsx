@@ -12,7 +12,7 @@ export function JCMonogram({
   return (
     <div
       className={cn(
-        "flex items-center justify-center rounded-lg bg-zinc-900 font-bold text-white dark:bg-zinc-100 dark:text-zinc-900",
+        "flex items-center justify-center rounded-lg bg-brand font-heading font-bold tracking-tight text-primary-foreground",
         className
       )}
       style={{ width: size, height: size, fontSize: size * 0.4 }}

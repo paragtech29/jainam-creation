@@ -4,7 +4,7 @@ import { LoginForm } from "./login-form";
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center bg-zinc-50 px-4 py-12 dark:bg-black">
+    <div className="flex min-h-svh flex-col items-center justify-center bg-background px-4 py-12">
       <div className="flex w-full max-w-sm flex-col items-center gap-4">
         <JCMonogram size={56} />
         <Card className="w-full">

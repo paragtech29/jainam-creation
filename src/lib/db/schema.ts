@@ -57,6 +57,9 @@ export const parties = pgTable(
   ],
 );
 
+export type Party = typeof parties.$inferSelect;
+export type NewParty = typeof parties.$inferInsert;
+
 // ---------- silaiKarigars ----------
 export const silaiKarigars = pgTable(
   "silai_karigars",
@@ -78,6 +81,9 @@ export const silaiKarigars = pgTable(
     index("karigars_user_archived_idx").on(t.userId, t.isArchived),
   ],
 );
+
+export type SilaiKarigar = typeof silaiKarigars.$inferSelect;
+export type NewSilaiKarigar = typeof silaiKarigars.$inferInsert;
 
 // ---------- partyKarigars (many-to-many join) ----------
 export const partyKarigars = pgTable(
@@ -110,6 +116,9 @@ export const particulars = pgTable(
     uniqueIndex("particulars_user_name_unique").on(t.userId, t.name), // prevent duplicate "galu" per user
   ],
 );
+
+export type Particular = typeof particulars.$inferSelect;
+export type NewParticular = typeof particulars.$inferInsert;
 
 // ---------- jobWorks ----------
 export const jobWorkStatusEnum = pgEnum("job_work_status", [

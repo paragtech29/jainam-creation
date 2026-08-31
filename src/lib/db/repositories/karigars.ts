@@ -11,6 +11,11 @@ import {
   type NewSilaiKarigar,
 } from "@/lib/db/schema";
 
+// Re-exported so consumers (e.g. karigar-form.tsx) can type against the
+// entity without importing @/lib/db/schema directly, which ESLint bans
+// outside repository modules.
+export type { SilaiKarigar } from "@/lib/db/schema";
+
 export async function listKarigars(userId: string): Promise<SilaiKarigar[]> {
   return db
     .select()

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUserId } from "@/lib/session";
 import { JCMonogram } from "@/components/jc-monogram";
@@ -22,7 +23,15 @@ export default async function AppLayout({
           <JCMonogram size={32} />
           <span className="truncate text-sm font-medium">Jainam Creation</span>
         </div>
-        <LogoutButton />
+        <div className="flex shrink-0 items-center gap-3">
+          <Link
+            href="/settings"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground"
+          >
+            Settings
+          </Link>
+          <LogoutButton />
+        </div>
       </header>
       <main className="flex-1">{children}</main>
     </div>

@@ -18,10 +18,18 @@ function TooltipProvider({
   )
 }
 
+// Self-providing, matching current shadcn upstream. Radix requires a
+// Provider ancestor, and requiring every caller to remember one turns a
+// missing wrapper into a RUNTIME crash rather than a type error — which is
+// exactly how it slipped through here. Nesting Providers is harmless.
 function Tooltip({
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root>) {
-  return <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+  return (
+    <TooltipProvider>
+      <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+    </TooltipProvider>
+  )
 }
 
 function TooltipTrigger({

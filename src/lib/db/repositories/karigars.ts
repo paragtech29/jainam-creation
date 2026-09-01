@@ -200,6 +200,24 @@ export async function listKarigarsNotLinkedToParty(userId: string, partyId: stri
     .orderBy(silaiKarigars.name);
 }
 
+// All karigar-to-party links for this user, in one query — the job work
+// form loads this whole set once (scale is ~20 karigars) and filters the
+// karigar dropdown client-side on party change, no server round trip per
+// party pick. The join through silaiKarigars is REQUIRED: party_karigars
+// has no userId column of its own, so selecting from it alone would escape
+// user scoping (same reasoning as countDescriptionTypeUsages in
+// description-types.ts / countParticularUsages pattern). Archived karigars
+// are excluded — they should not appear in the dropdown at all.
+export async function listKarigarPartyLinks(
+  userId: string
+): Promise<{ karigarId: string; partyId: string }[]> {
+  return db
+    .select({ karigarId: partyKarigars.karigarId, partyId: partyKarigars.partyId })
+    .from(partyKarigars)
+    .innerJoin(silaiKarigars, eq(silaiKarigars.id, partyKarigars.karigarId))
+    .where(and(eq(silaiKarigars.userId, userId), eq(silaiKarigars.isArchived, false)));
+}
+
 // Mirror of replacePartyKarigarLinks, from the karigar's side. Linking is now
 // managed on the karigar form, so this is the primary write path for the
 // relationship. Wrapped in a transaction: a half-saved party set would leave

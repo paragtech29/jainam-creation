@@ -2,12 +2,14 @@
 // pattern for JobWork. Create/update belong to Phase 3 — out of scope here.
 // deleteJobWork demonstrates the "mismatched userId matches zero rows,
 // never throws, never touches another user's row" principle.
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import {
   jobWorks,
   jobWorkDescriptions,
   descriptionTypes,
+  parties,
+  silaiKarigars,
   type JobWork,
   type NewJobWork,
 } from "@/lib/db/schema";
@@ -141,4 +143,75 @@ export async function getJobWorkWithDescriptions(
     .orderBy(asc(jobWorkDescriptions.id));
 
   return { ...jobWork, lines };
+}
+
+// Single aggregated query for the job work list screen. Modeled directly on
+// listKarigarsPage/listPartiesPage: one Promise.all([rowsQuery, countQuery]),
+// same limit/offset arithmetic. Deliberately NO status filter, NO archived
+// toggle, NO date-range filter — those are Phase 5 scope.
+export type JobWorkListRow = {
+  id: string;
+  date: string;
+  partyName: string;
+  karigarName: string;
+  chalanNo: string | null;
+  partyDesignNo: string | null;
+  pieces: number;
+  rate: number;
+  total: number;
+  status: "PENDING" | "IN_PROGRESS" | "COMPLETED";
+  isBilled: boolean;
+};
+
+export async function listJobWorksPage(
+  userId: string,
+  opts: { search?: string; page?: number; pageSize?: number } = {}
+): Promise<{ rows: JobWorkListRow[]; total: number }> {
+  const { search = "", page = 1, pageSize = 20 } = opts;
+  const term = search.trim();
+
+  const where = and(
+    eq(jobWorks.userId, userId),
+    term
+      ? or(
+          ilike(jobWorks.chalanNo, `%${term}%`),
+          ilike(jobWorks.partyDesignNo, `%${term}%`),
+          ilike(jobWorks.computerDesignNo, `%${term}%`),
+          ilike(parties.name, `%${term}%`),
+          ilike(silaiKarigars.name, `%${term}%`)
+        )
+      : undefined
+  );
+
+  const [rows, [{ count }]] = await Promise.all([
+    db
+      .select({
+        id: jobWorks.id,
+        date: jobWorks.date,
+        partyName: parties.name,
+        karigarName: silaiKarigars.name,
+        chalanNo: jobWorks.chalanNo,
+        partyDesignNo: jobWorks.partyDesignNo,
+        pieces: jobWorks.pieces,
+        rate: jobWorks.rate,
+        total: jobWorks.total,
+        status: jobWorks.status,
+        isBilled: jobWorks.isBilled,
+      })
+      .from(jobWorks)
+      .innerJoin(parties, eq(parties.id, jobWorks.partyId))
+      .innerJoin(silaiKarigars, eq(silaiKarigars.id, jobWorks.karigarId))
+      .where(where)
+      .orderBy(desc(jobWorks.date), desc(jobWorks.createdAt))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(jobWorks)
+      .innerJoin(parties, eq(parties.id, jobWorks.partyId))
+      .innerJoin(silaiKarigars, eq(silaiKarigars.id, jobWorks.karigarId))
+      .where(where),
+  ]);
+
+  return { rows, total: count };
 }

@@ -57,7 +57,7 @@ export default async function AppLayout({
         </header>
 
         <main className="flex-1 overflow-x-hidden">
-          <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+          <div className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">
             {children}
           </div>
         </main>

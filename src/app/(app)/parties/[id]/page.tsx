@@ -6,7 +6,6 @@ import { getPartyWithKarigars, countPartyJobWorks } from "@/lib/db/repositories/
 import { listKarigars } from "@/lib/db/repositories/karigars";
 import { Badge } from "@/components/ui/badge";
 import { PartyForm } from "../party-form";
-import { PartyRecordActions } from "./party-record-actions";
 
 export default async function PartyDetailPage({
   params,
@@ -26,7 +25,7 @@ export default async function PartyDetailPage({
   const linked = allKarigars.filter((k) => party.karigarIds.includes(k.id));
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5">
+    <div className="space-y-5">
       <div>
         <Link
           href="/parties"
@@ -45,10 +44,15 @@ export default async function PartyDetailPage({
         </p>
       </div>
 
-      <div className="rounded-lg border border-border bg-card p-5 shadow-card sm:p-6">
-        <PartyForm party={party} />
-      </div>
+      {/* Two columns on a laptop: the form is the work, the karigar list and
+          record actions are reference material beside it. On a phone this
+          collapses to one column in the same order. */}
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="rounded-lg border border-border bg-card p-5 shadow-card sm:p-6">
+          <PartyForm party={party} />
+        </div>
 
+        <div className="flex flex-col gap-5">
       {/* Read-only here by design. Linking is managed on the karigar, so there
           is exactly one place to change it and no chance of two screens
           disagreeing about who works for whom. */}
@@ -86,12 +90,7 @@ export default async function PartyDetailPage({
         </p>
       </div>
 
-      <div className="rounded-lg border border-border bg-card p-5 shadow-card sm:p-6">
-        <PartyRecordActions
-          partyId={id}
-          isArchived={party.isArchived}
-          canDelete={jobWorkCount === 0}
-        />
+        </div>
       </div>
     </div>
   );

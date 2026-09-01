@@ -171,3 +171,18 @@ export async function linkSingleKarigarAction(
   revalidatePath(`/parties/${partyId}`);
   return { ok: true };
 }
+
+// Void-returning wrappers for the list-row action buttons. RowActions is a
+// client component and needs `() => Promise<void>`; the originals return a
+// form state that the detail screen relies on, so they are left alone.
+export async function archivePartyRowAction(partyId: string): Promise<void> {
+  await archivePartyAction(partyId);
+}
+
+export async function unarchivePartyRowAction(partyId: string): Promise<void> {
+  await unarchivePartyAction(partyId);
+}
+
+export async function deletePartyRowAction(partyId: string): Promise<void> {
+  await deletePartyAction(partyId);
+}

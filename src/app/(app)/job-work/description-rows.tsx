@@ -9,7 +9,7 @@
 // This works ONLY as long as every row keeps a stable identity independent
 // of its position, so removing a middle row actually removes that row's DOM
 // node rather than React reusing it for a different logical row — hence
-// `key={row.key}` (crypto.randomUUID() at row creation), never the array
+// `key={row.key}` (a fresh id at row creation), never the array
 // index. If a future refactor renames these fields to
 // `descriptionTypeId[0]`-style indexed names, the server's getAll-then-zip
 // pairing breaks silently and a price can land against the wrong kind of
@@ -19,6 +19,12 @@
 // posts natively via Radix's hidden mirrored native <select>. Do NOT add a
 // paired <input type="hidden" name="descriptionTypeId" /> — that would post
 // every value twice and misalign every row against its price.
+// createId, NOT crypto.randomUUID. randomUUID only exists in a secure
+// context — it works on localhost and HTTPS but throws on a plain-http LAN
+// address like http://192.168.1.5:3000, which is exactly how the owner opens
+// this app from his phone. cuid2 is already a dependency and has no such
+// requirement.
+import { createId } from "@paralleldrive/cuid2";
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,7 +42,7 @@ type DescriptionType = { id: string; name: string };
 type Row = { key: string; descriptionTypeId: string; price: string };
 
 function newRow(): Row {
-  return { key: crypto.randomUUID(), descriptionTypeId: "", price: "" };
+  return { key: createId(), descriptionTypeId: "", price: "" };
 }
 
 export function DescriptionRows({
@@ -58,7 +64,7 @@ export function DescriptionRows({
   const [rows, setRows] = useState<Row[]>(() =>
     initialRows && initialRows.length > 0
       ? initialRows.map((r) => ({
-          key: crypto.randomUUID(),
+          key: createId(),
           descriptionTypeId: r.descriptionTypeId,
           price: String(r.price),
         }))

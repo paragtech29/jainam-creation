@@ -213,6 +213,10 @@ export function JobWorkForm({
       <FieldGroup>
         <FieldSet>
           <FieldLegend variant="label">Job work</FieldLegend>
+          {/* Three-up on a laptop, stacked on a phone. Date, party and karigar
+              are chosen together in one glance, so they belong on one line
+              where the width exists. */}
+          <div className="grid gap-4 lg:grid-cols-3">
 
           <Field>
             <FieldLabel htmlFor="date">Date</FieldLabel>
@@ -327,6 +331,7 @@ export function JobWorkForm({
             )}
             <FieldError errors={[{ message: state?.fieldErrors?.karigarId }]} />
           </Field>
+          </div>
         </FieldSet>
 
         <FieldSet>
@@ -402,6 +407,7 @@ export function JobWorkForm({
 
         <FieldSet>
           <FieldLegend variant="label">Design numbers</FieldLegend>
+          <div className="grid gap-4 lg:grid-cols-3">
 
           <Field>
             <FieldLabel htmlFor="chalanNo">Chalan No</FieldLabel>
@@ -448,6 +454,7 @@ export function JobWorkForm({
               <FieldError errors={[{ message: state?.fieldErrors?.computerDesignNo }]} />
             </FieldContent>
           </Field>
+          </div>
         </FieldSet>
 
         <FieldSet>

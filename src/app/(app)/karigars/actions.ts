@@ -147,3 +147,17 @@ export async function deleteKarigarAction(
   revalidatePath("/karigars");
   redirect("/karigars");
 }
+
+// Void-returning wrappers for the list-row action buttons — see the matching
+// note in parties/actions.ts.
+export async function archiveKarigarRowAction(karigarId: string): Promise<void> {
+  await archiveKarigarAction(karigarId);
+}
+
+export async function unarchiveKarigarRowAction(karigarId: string): Promise<void> {
+  await unarchiveKarigarAction(karigarId);
+}
+
+export async function deleteKarigarRowAction(karigarId: string): Promise<void> {
+  await deleteKarigarAction(karigarId);
+}

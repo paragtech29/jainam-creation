@@ -10,7 +10,6 @@ import {
 import { listParties } from "@/lib/db/repositories/parties";
 import { Badge } from "@/components/ui/badge";
 import { KarigarForm } from "../karigar-form";
-import { KarigarRecordActions } from "./karigar-record-actions";
 
 export default async function KarigarDetailPage({
   params,
@@ -30,7 +29,7 @@ export default async function KarigarDetailPage({
   ]);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5">
+    <div className="space-y-5">
       <div>
         <Link
           href="/karigars"
@@ -54,14 +53,6 @@ export default async function KarigarDetailPage({
           karigar={karigar}
           parties={allParties.map((p) => ({ id: p.id, name: p.name }))}
           linkedPartyIds={linkedPartyIds}
-        />
-      </div>
-
-      <div className="rounded-lg border border-border bg-card p-5 shadow-card sm:p-6">
-        <KarigarRecordActions
-          karigarId={id}
-          isArchived={karigar.isArchived}
-          canDelete={jobWorkCount === 0}
         />
       </div>
     </div>

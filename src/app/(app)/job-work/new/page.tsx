@@ -23,7 +23,7 @@ export default async function NewJobWorkPage() {
   const parties = allParties.filter((p) => !p.isArchived);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5">
+    <div className="space-y-5">
       <div>
         <Link
           href="/job-work"

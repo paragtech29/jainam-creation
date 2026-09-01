@@ -1,8 +1,13 @@
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import type { PartyListRow } from "@/lib/db/repositories/parties";
+import { RowActions } from "@/components/row-actions";
+import {
+  archivePartyRowAction,
+  unarchivePartyRowAction,
+  deletePartyRowAction,
+} from "./actions";
 
 // Two representations rather than one responsive table: a real table on the
 // laptop, stacked cards on the phone. Horizontally scrolling a table one-handed
@@ -19,13 +24,16 @@ export function PartyList({
       {/* Phone */}
       <ul className="flex flex-col gap-2.5 md:hidden">
         {parties.map((p) => (
-          <li key={p.id}>
+          <li
+            key={p.id}
+            className={cn(
+              "flex items-center gap-1 rounded-lg border bg-card p-4 shadow-card transition-shadow hover:shadow-card-hover",
+              highlight === p.id ? "border-brand ring-1 ring-brand" : "border-border"
+            )}
+          >
             <Link
               href={`/parties/${p.id}`}
-              className={cn(
-                "flex items-center gap-3 rounded-lg border bg-card p-4 shadow-card transition-shadow hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                highlight === p.id ? "border-brand ring-1 ring-brand" : "border-border"
-              )}
+              className="flex min-w-0 flex-1 items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
@@ -41,8 +49,16 @@ export function PartyList({
                   {p.jobWorkCount === 1 ? "job work" : "job works"}
                 </p>
               </div>
-              <ChevronRight size={16} className="shrink-0 text-muted-foreground" aria-hidden="true" />
             </Link>
+            <RowActions
+              name={p.name}
+              noun="party"
+              isArchived={p.isArchived}
+              canDelete={p.jobWorkCount === 0}
+              onArchive={archivePartyRowAction.bind(null, p.id)}
+              onUnarchive={unarchivePartyRowAction.bind(null, p.id)}
+              onDelete={deletePartyRowAction.bind(null, p.id)}
+            />
           </li>
         ))}
       </ul>
@@ -56,7 +72,7 @@ export function PartyList({
               <th className="h-11 px-4 font-medium text-muted-foreground">Owner</th>
               <th className="h-11 px-4 font-medium text-muted-foreground">Contact</th>
               <th className="h-11 px-4 text-right font-medium text-muted-foreground">Job works</th>
-              <th className="h-11 w-10 px-4" />
+              <th className="h-11 w-24 px-4 text-right font-medium text-muted-foreground">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -82,14 +98,18 @@ export function PartyList({
                 <td className="px-4 text-right font-mono tabular-nums text-muted-foreground">
                   {p.jobWorkCount}
                 </td>
-                <td className="px-4 text-right">
-                  <Link
-                    href={`/parties/${p.id}`}
-                    aria-label={`Open ${p.name}`}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    <ChevronRight size={16} aria-hidden="true" />
-                  </Link>
+                <td className="px-4">
+                  <div className="flex justify-end">
+                    <RowActions
+                      name={p.name}
+                      noun="party"
+                      isArchived={p.isArchived}
+                      canDelete={p.jobWorkCount === 0}
+                      onArchive={archivePartyRowAction.bind(null, p.id)}
+                      onUnarchive={unarchivePartyRowAction.bind(null, p.id)}
+                      onDelete={deletePartyRowAction.bind(null, p.id)}
+                    />
+                  </div>
                 </td>
               </tr>
             ))}

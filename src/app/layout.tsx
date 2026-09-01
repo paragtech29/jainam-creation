@@ -31,7 +31,11 @@ export const metadata: Metadata = {
   description: "Job work tracking for Jainam Creation",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html
       lang="en"

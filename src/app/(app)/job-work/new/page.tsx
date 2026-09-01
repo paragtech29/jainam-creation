@@ -32,10 +32,6 @@ export default async function NewJobWorkPage() {
           <ArrowLeft size={15} aria-hidden="true" />
           Back to job work
         </Link>
-        <h1 className="mt-3 font-heading text-2xl font-semibold tracking-tight">Add job work</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Record a chalan — date, party, karigar, description rows and pieces.
-        </p>
       </div>
 
       {parties.length === 0 ? (

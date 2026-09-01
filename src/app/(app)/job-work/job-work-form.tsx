@@ -11,6 +11,7 @@
 // which is precisely the half-filled-form-destroyed bug this whole plan
 // exists to avoid. Nothing in this file keys a child on `state`.
 import { useActionState, useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
@@ -51,7 +52,7 @@ const STATUS_OPTIONS: { value: JobWorkStatus; label: string }[] = [
 function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} className="h-11 w-full text-base">
+    <Button type="submit" disabled={pending} className="h-10 px-5">
       {pending ? pendingLabel : label}
     </Button>
   );
@@ -245,7 +246,7 @@ export function JobWorkForm({
                 setDraft((d) => ({ ...d, partyId: v, karigarId: "" }))
               }
             >
-              <SelectTrigger id="partyId" className="h-11 w-full">
+              <SelectTrigger id="partyId" className="h-[42px] w-full">
                 <SelectValue placeholder="Select a party" />
               </SelectTrigger>
               <SelectContent>
@@ -264,7 +265,7 @@ export function JobWorkForm({
             {!selectedPartyId ? (
               <>
                 <Select name="karigarId" value="" disabled>
-                  <SelectTrigger id="karigarId" className="h-11 w-full">
+                  <SelectTrigger id="karigarId" className="h-[42px] w-full">
                     <SelectValue placeholder="Choose a party first" />
                   </SelectTrigger>
                   <SelectContent />
@@ -283,7 +284,7 @@ export function JobWorkForm({
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
                     <Select value={linkingKarigarId} onValueChange={setLinkingKarigarId}>
-                      <SelectTrigger className="h-11 w-full">
+                      <SelectTrigger className="h-[42px] w-full">
                         <SelectValue placeholder="Pick a karigar to link" />
                       </SelectTrigger>
                       <SelectContent>
@@ -299,7 +300,7 @@ export function JobWorkForm({
                     type="button"
                     disabled={!linkingKarigarId || linkPending}
                     onClick={handleLinkKarigar}
-                    className="h-11"
+                    className="h-[42px]"
                   >
                     {linkPending ? "Linking..." : "Link"}
                   </Button>
@@ -317,7 +318,7 @@ export function JobWorkForm({
                 onValueChange={(v) => setDraft((d) => ({ ...d, karigarId: v }))}
                 required
               >
-                <SelectTrigger id="karigarId" className="h-11 w-full">
+                <SelectTrigger id="karigarId" className="h-[42px] w-full">
                   <SelectValue placeholder="Select a karigar" />
                 </SelectTrigger>
                 <SelectContent>
@@ -364,45 +365,65 @@ export function JobWorkForm({
                 required
                 value={draft.pieces}
                 onChange={(e) => setDraft((d) => ({ ...d, pieces: e.target.value }))}
-                className="h-11 tnum"
+                className="h-[42px] text-right font-mono tabular-nums"
               />
               <FieldError errors={[{ message: state?.fieldErrors?.pieces }]} />
             </FieldContent>
+
             <FieldContent>
               <FieldLabel htmlFor="rate">Rate</FieldLabel>
-              <Input
-                id="rate"
-                name="rate"
-                inputMode="numeric"
-                value={rateHook.rate}
-                onChange={(e) => rateHook.onRateChange(e.target.value)}
-                className="h-11 tnum"
-              />
+              <div className="relative">
+                <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                  ₹
+                </span>
+                <Input
+                  id="rate"
+                  name="rate"
+                  inputMode="numeric"
+                  value={rateHook.rate}
+                  onChange={(e) => rateHook.onRateChange(e.target.value)}
+                  className="h-[42px] pl-6 text-right font-mono tabular-nums"
+                />
+              </div>
               {!rateHook.touched ? (
-                <FieldDescription>Auto-calculated from the description rows below.</FieldDescription>
-              ) : Number(rateHook.rate) !== rateHook.computedSum ? (
-                <FieldDescription>
-                  Auto: ₹{rateHook.computedSum.toLocaleString("en-IN")}{" "}
-                  <button
-                    type="button"
-                    onClick={rateHook.resetToAuto}
-                    className="text-primary underline underline-offset-4"
-                  >
-                    Use auto (₹{rateHook.computedSum.toLocaleString("en-IN")})
-                  </button>
+                <FieldDescription>Adds up the rows above.</FieldDescription>
+              ) : (
+                <FieldDescription className="flex flex-wrap items-center gap-1.5">
+                  <span className="inline-flex items-center rounded-full bg-status-pending-bg px-2 py-0.5 text-[11px] font-medium text-status-pending">
+                    Set by you
+                  </span>
+                  {Number(rateHook.rate) !== rateHook.computedSum ? (
+                    <button
+                      type="button"
+                      onClick={rateHook.resetToAuto}
+                      className="font-medium text-primary underline underline-offset-4"
+                    >
+                      Use auto (₹{rateHook.computedSum.toLocaleString("en-IN")})
+                    </button>
+                  ) : null}
                 </FieldDescription>
-              ) : null}
+              )}
               <FieldError errors={[{ message: state?.fieldErrors?.rate }]} />
             </FieldContent>
           </Field>
 
-          <Field>
-            <FieldLabel>Total</FieldLabel>
-            <p className="tnum text-2xl font-semibold">
-              ₹{totalPreview.toLocaleString("en-IN")}
-            </p>
-            <FieldDescription>Total is calculated and saved by the server.</FieldDescription>
-          </Field>
+          {/* The money line, shown as the sum it is. Pieces × rate, spelled
+              out, so a wrong figure is obvious before saving rather than
+              after. The server recomputes this — the browser never decides it. */}
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-border bg-accent/50 px-4 py-3">
+            <div className="flex items-baseline gap-1.5 font-mono text-sm tabular-nums text-secondary-foreground">
+              <span>{draft.pieces || 0}</span>
+              <span className="text-muted-foreground">pieces</span>
+              <span className="text-muted-foreground">×</span>
+              <span>₹{rateHook.rate || 0}</span>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-xs uppercase tracking-[0.09em] text-muted-foreground">Total</span>
+              <span className="font-mono text-2xl font-bold tabular-nums tracking-tight">
+                ₹{totalPreview.toLocaleString("en-IN")}
+              </span>
+            </div>
+          </div>
         </FieldSet>
 
         <FieldSet>
@@ -418,7 +439,7 @@ export function JobWorkForm({
               pattern="[0-9]*"
               value={draft.chalanNo}
               onChange={(e) => setDraft((d) => ({ ...d, chalanNo: e.target.value }))}
-              className="h-11 tnum"
+              className="h-[42px] font-mono tabular-nums"
             />
             <FieldDescription>
               The same chalan no. can be used on more than one job work.
@@ -436,7 +457,7 @@ export function JobWorkForm({
                 pattern="[0-9]*"
                 value={draft.partyDesignNo}
                 onChange={(e) => setDraft((d) => ({ ...d, partyDesignNo: e.target.value }))}
-                className="h-11 tnum"
+                className="h-[42px] font-mono tabular-nums"
               />
               <FieldError errors={[{ message: state?.fieldErrors?.partyDesignNo }]} />
             </FieldContent>
@@ -449,7 +470,7 @@ export function JobWorkForm({
                 pattern="[0-9]*"
                 value={draft.computerDesignNo}
                 onChange={(e) => setDraft((d) => ({ ...d, computerDesignNo: e.target.value }))}
-                className="h-11 tnum"
+                className="h-[42px] font-mono tabular-nums"
               />
               <FieldError errors={[{ message: state?.fieldErrors?.computerDesignNo }]} />
             </FieldContent>
@@ -467,11 +488,12 @@ export function JobWorkForm({
               name="comment"
               value={draft.comment}
               onChange={(e) => setDraft((d) => ({ ...d, comment: e.target.value }))}
-              className="min-h-24 text-base"
+              className="min-h-20"
             />
             <FieldError errors={[{ message: state?.fieldErrors?.comment }]} />
           </Field>
 
+          <div className="grid gap-4 lg:grid-cols-2">
           <Field>
             <FieldLabel htmlFor="status">Job Work Status</FieldLabel>
             <Select
@@ -479,7 +501,7 @@ export function JobWorkForm({
               value={draft.status}
               onValueChange={(v) => handleStatusChange(v as JobWorkStatus)}
             >
-              <SelectTrigger id="status" className="h-11 w-full">
+              <SelectTrigger id="status" className="h-[42px] w-full">
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent>
@@ -493,23 +515,26 @@ export function JobWorkForm({
             <FieldError errors={[{ message: state?.fieldErrors?.status }]} />
           </Field>
 
-          <Field orientation="horizontal">
-            <FieldContent>
-              <FieldLabel htmlFor="isBilled">Is Billed</FieldLabel>
-              {draft.status !== "COMPLETED" ? (
-                <FieldDescription>
-                  Available once this job work&apos;s status is Completed.
-                </FieldDescription>
-              ) : null}
-            </FieldContent>
-            <Switch
-              id="isBilled"
-              name="isBilled"
-              checked={draft.isBilled}
-              disabled={draft.status !== "COMPLETED"}
-              onCheckedChange={(checked) => setDraft((d) => ({ ...d, isBilled: checked }))}
-            />
+          <Field>
+            <FieldLabel htmlFor="isBilled">Is Billed</FieldLabel>
+            <div className="flex min-h-[42px] items-center justify-between gap-3 rounded-[10px] border border-input bg-card px-3">
+              <span className="text-sm text-muted-foreground">
+                {draft.status !== "COMPLETED"
+                  ? "Available once the status is Completed"
+                  : draft.isBilled
+                    ? "Bill has been made"
+                    : "Not billed yet"}
+              </span>
+              <Switch
+                id="isBilled"
+                name="isBilled"
+                checked={draft.isBilled}
+                disabled={draft.status !== "COMPLETED"}
+                onCheckedChange={(checked) => setDraft((d) => ({ ...d, isBilled: checked }))}
+              />
+            </div>
           </Field>
+          </div>
 
           {/* Photos are Phase 4's scope — no upload UI here, and photo1Url /
               photo2Url are never posted from this form. */}
@@ -522,10 +547,15 @@ export function JobWorkForm({
         </p>
       ) : null}
 
-      <SubmitButton
-        label={isEdit ? "Save changes" : "Save job work"}
-        pendingLabel={isEdit ? "Saving..." : "Saving..."}
-      />
+      <div className="-mx-5 -mb-5 flex items-center justify-end gap-2.5 border-t border-border bg-muted/40 px-5 py-3.5 sm:-mx-6 sm:-mb-6 sm:px-6">
+        <Button asChild variant="outline" className="h-10 px-4">
+          <Link href="/job-work">Cancel</Link>
+        </Button>
+        <SubmitButton
+          label={isEdit ? "Save changes" : "Save job work"}
+          pendingLabel="Saving…"
+        />
+      </div>
     </form>
   );
 }

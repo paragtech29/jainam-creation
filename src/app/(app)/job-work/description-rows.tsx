@@ -106,12 +106,30 @@ export function DescriptionRows({
     if (addingTypeForRow === key) setAddingTypeForRow(null);
   }
 
+  const subtotal = rows
+    .map((r) => Number(r.price))
+    .filter((n) => Number.isFinite(n) && Number.isInteger(n) && n > 0)
+    .reduce((a, b) => a + b, 0);
+
   return (
-    <div className="flex flex-col gap-3">
-      {rows.map((row) => (
-        <div key={row.key} className="flex flex-col gap-2">
-          <div className="flex items-start gap-2">
-            <div className="flex-1">
+    <div className="flex flex-col gap-2">
+      {/* A bordered table rather than loose rows: the type and its price are
+          one record, and the old layout gave the dropdown ~85% of the width
+          while the price — the number that decides the rate — got a stub. */}
+      <div className="overflow-hidden rounded-[12px] border border-border">
+        <div className="grid grid-cols-[1fr_150px_44px] items-center gap-2 border-b border-border bg-muted/40 px-3 py-2">
+          <span className="text-[11px] font-medium uppercase tracking-[0.09em] text-muted-foreground">
+            Type of work
+          </span>
+          <span className="text-right text-[11px] font-medium uppercase tracking-[0.09em] text-muted-foreground">
+            Price (₹)
+          </span>
+          <span className="sr-only">Remove</span>
+        </div>
+
+        {rows.map((row, i) => (
+          <div key={row.key} className="border-b border-border last:border-0">
+            <div className="grid grid-cols-[1fr_150px_44px] items-center gap-2 px-3 py-2">
               <Select
                 name="descriptionTypeId"
                 value={row.descriptionTypeId}
@@ -123,8 +141,8 @@ export function DescriptionRows({
                   updateRow(row.key, { descriptionTypeId: v });
                 }}
               >
-                <SelectTrigger className="h-11 w-full">
-                  <SelectValue placeholder="Type of work" />
+                <SelectTrigger className="h-10 w-full border-0 bg-transparent px-1 shadow-none focus-visible:ring-1">
+                  <SelectValue placeholder="Choose work…" />
                 </SelectTrigger>
                 <SelectContent>
                   {availableTypes.map((t) => (
@@ -132,53 +150,76 @@ export function DescriptionRows({
                       {t.name}
                     </SelectItem>
                   ))}
-                  <SelectItem value="__add_new__" className="text-primary font-medium">
+                  <SelectItem value="__add_new__" className="font-medium text-primary">
                     + Add new type
                   </SelectItem>
                 </SelectContent>
               </Select>
+
+              <div className="relative">
+                <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                  ₹
+                </span>
+                <Input
+                  name="price"
+                  type="number"
+                  inputMode="numeric"
+                  step="1"
+                  min="1"
+                  placeholder="0"
+                  aria-label={`Price for row ${i + 1}`}
+                  value={row.price}
+                  onChange={(e) => updateRow(row.key, { price: e.target.value })}
+                  className="h-10 pl-6 text-right font-mono tabular-nums"
+                />
+              </div>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={`Remove row ${i + 1}`}
+                onClick={() => removeRow(row.key)}
+                disabled={rows.length === 1}
+                className="size-10 shrink-0 text-muted-foreground hover:text-destructive disabled:opacity-30"
+              >
+                <Trash2 size={15} />
+              </Button>
             </div>
 
-            <Input
-              name="price"
-              type="number"
-              inputMode="numeric"
-              step="1"
-              min="1"
-              placeholder="Price"
-              value={row.price}
-              onChange={(e) => updateRow(row.key, { price: e.target.value })}
-              className="h-11 w-28 tnum"
-            />
-
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Remove row"
-              onClick={() => removeRow(row.key)}
-              className="h-11 w-11 shrink-0"
-            >
-              <Trash2 size={16} className="text-muted-foreground" />
-            </Button>
+            {addingTypeForRow === row.key ? (
+              <div className="border-t border-border bg-muted/30 px-3 py-2.5">
+                <InlineDescriptionTypeForm
+                  onCreated={(t) => {
+                    setAvailableTypes((cur) => [...cur, t]);
+                    updateRow(row.key, { descriptionTypeId: t.id });
+                    setAddingTypeForRow(null);
+                  }}
+                  onCancel={() => setAddingTypeForRow(null)}
+                />
+              </div>
+            ) : null}
           </div>
+        ))}
 
-          {addingTypeForRow === row.key ? (
-            <InlineDescriptionTypeForm
-              onCreated={(t) => {
-                setAvailableTypes((cur) => [...cur, t]);
-                updateRow(row.key, { descriptionTypeId: t.id });
-                setAddingTypeForRow(null);
-              }}
-              onCancel={() => setAddingTypeForRow(null)}
-            />
-          ) : null}
-        </div>
-      ))}
+        <button
+          type="button"
+          onClick={addRow}
+          className="flex w-full items-center justify-center gap-1.5 border-t border-dashed border-border bg-card py-2.5 text-[13px] font-medium text-primary transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Plus size={15} aria-hidden="true" /> Add row
+        </button>
+      </div>
 
-      <Button type="button" variant="outline" size="sm" onClick={addRow} className="w-fit gap-1.5">
-        <Plus size={15} /> Add row
-      </Button>
+      <div className="flex items-baseline justify-between px-1">
+        <span className="text-xs text-muted-foreground">
+          {rows.length} {rows.length === 1 ? "row" : "rows"}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          Rows add up to{" "}
+          <strong className="font-mono font-semibold tabular-nums text-foreground">₹{subtotal}</strong>
+        </span>
+      </div>
 
       {error ? (
         <p role="alert" className="text-sm text-destructive">

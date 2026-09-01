@@ -27,7 +27,7 @@ import { MultiSelect } from "@/components/multi-select";
 function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} className="h-11 w-full text-base">
+    <Button type="submit" disabled={pending} className="h-10 px-5">
       {pending ? pendingLabel : label}
     </Button>
   );
@@ -62,6 +62,7 @@ export function KarigarForm({
       <FieldGroup>
         <FieldSet>
           <FieldLegend variant="label">Karigar</FieldLegend>
+          <div className="grid gap-x-4 gap-y-4 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
           <Field>
             <FieldLabel htmlFor="name">Name</FieldLabel>
             <Input
@@ -69,21 +70,23 @@ export function KarigarForm({
               name="name"
               defaultValue={karigar?.name}
               required
-              className="h-11 text-base"
+              className="h-[42px]"
             />
             <FieldError errors={[{ message: state?.fieldErrors?.name }]} />
           </Field>
+        </div>
         </FieldSet>
 
         <FieldSet>
           <FieldLegend variant="label">Contact</FieldLegend>
+          <div className="grid gap-x-4 gap-y-4 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
           <Field>
             <FieldLabel htmlFor="address">Address</FieldLabel>
             <Input
               id="address"
               name="address"
               defaultValue={karigar?.address ?? undefined}
-              className="h-11 text-base"
+              className="h-[42px]"
             />
             <FieldError errors={[{ message: state?.fieldErrors?.address }]} />
           </Field>
@@ -95,7 +98,7 @@ export function KarigarForm({
                 name="contact1"
                 type="tel"
                 defaultValue={karigar?.contact1 ?? undefined}
-                className="h-11 text-base"
+                className="h-[42px]"
               />
               <FieldError errors={[{ message: state?.fieldErrors?.contact1 }]} />
             </FieldContent>
@@ -106,15 +109,17 @@ export function KarigarForm({
                 name="contact2"
                 type="tel"
                 defaultValue={karigar?.contact2 ?? undefined}
-                className="h-11 text-base"
+                className="h-[42px]"
               />
               <FieldError errors={[{ message: state?.fieldErrors?.contact2 }]} />
             </FieldContent>
           </Field>
+        </div>
         </FieldSet>
 
         <FieldSet>
           <FieldLegend variant="label">Parties this karigar works for</FieldLegend>
+          <div className="grid gap-x-4 gap-y-4 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
           {parties && parties.length > 0 ? (
             <>
               <MultiSelect
@@ -135,6 +140,7 @@ export function KarigarForm({
               No parties yet. <Link href="/parties/new">Add a party</Link>
             </FieldDescription>
           )}
+        </div>
         </FieldSet>
       </FieldGroup>
 
@@ -150,7 +156,7 @@ export function KarigarForm({
           <input type="hidden" name="confirmDuplicate" value="true" />
           <div className="flex gap-2">
             <SubmitButton label="Add anyway" pendingLabel="Adding..." />
-            <Button asChild variant="outline" className="h-11 w-full text-base">
+            <Button asChild variant="outline" className="h-[42px]">
               <Link href="/karigars">Cancel</Link>
             </Button>
           </div>

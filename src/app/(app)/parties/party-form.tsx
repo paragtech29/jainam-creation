@@ -25,8 +25,8 @@ type Party = NonNullable<Awaited<ReturnType<typeof getPartyById>>>;
 function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} className="h-11 w-full text-base">
-      {pending ? "Saving..." : label}
+    <Button type="submit" disabled={pending} className="h-10 px-5">
+      {pending ? "Saving…" : label}
     </Button>
   );
 }
@@ -46,6 +46,7 @@ export function PartyForm({ party }: { party?: Party }) {
     <form action={formAction} className="flex flex-col gap-6">
       <FieldSet>
         <FieldLegend variant="label">Party</FieldLegend>
+        <div className="grid gap-x-4 gap-y-4 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
         <Field>
           <FieldLabel htmlFor="name">Party name</FieldLabel>
           <Input
@@ -53,14 +54,16 @@ export function PartyForm({ party }: { party?: Party }) {
             name="name"
             required
             defaultValue={party?.name}
-            className="h-11 text-base"
+            className="h-[42px]"
           />
           <FieldError errors={[{ message: state?.fieldErrors?.name }]} />
         </Field>
+      </div>
       </FieldSet>
 
       <FieldSet>
         <FieldLegend variant="label">Owners</FieldLegend>
+        <div className="grid gap-x-4 gap-y-4 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
         <Field>
           <FieldLabel htmlFor="ownerName1">Owner name 1</FieldLabel>
           <Input
@@ -68,7 +71,7 @@ export function PartyForm({ party }: { party?: Party }) {
             name="ownerName1"
             required
             defaultValue={party?.ownerName1}
-            className="h-11 text-base"
+            className="h-[42px]"
           />
           <FieldError errors={[{ message: state?.fieldErrors?.ownerName1 }]} />
         </Field>
@@ -78,20 +81,22 @@ export function PartyForm({ party }: { party?: Party }) {
             id="ownerName2"
             name="ownerName2"
             defaultValue={party?.ownerName2 ?? ""}
-            className="h-11 text-base"
+            className="h-[42px]"
           />
         </Field>
+      </div>
       </FieldSet>
 
       <FieldSet>
         <FieldLegend variant="label">Contact</FieldLegend>
+        <div className="grid gap-x-4 gap-y-4 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
         <Field>
           <FieldLabel htmlFor="address">Address</FieldLabel>
           <Input
             id="address"
             name="address"
             defaultValue={party?.address ?? ""}
-            className="h-11 text-base"
+            className="h-[42px]"
           />
         </Field>
         <Field>
@@ -115,7 +120,7 @@ export function PartyForm({ party }: { party?: Party }) {
             name="email"
             type="email"
             defaultValue={party?.email ?? ""}
-            className="h-11 text-base"
+            className="h-[42px]"
           />
           <FieldError errors={[{ message: state?.fieldErrors?.email }]} />
         </Field>
@@ -127,7 +132,7 @@ export function PartyForm({ party }: { party?: Party }) {
               name="contact1"
               type="tel"
               defaultValue={party?.contact1 ?? ""}
-              className="h-11 text-base"
+              className="h-[42px]"
             />
           </FieldContent>
           <FieldContent>
@@ -137,10 +142,11 @@ export function PartyForm({ party }: { party?: Party }) {
               name="contact2"
               type="tel"
               defaultValue={party?.contact2 ?? ""}
-              className="h-11 text-base"
+              className="h-[42px]"
             />
           </FieldContent>
         </Field>
+      </div>
       </FieldSet>
 
       {state?.duplicateWarning ? (
@@ -148,10 +154,10 @@ export function PartyForm({ party }: { party?: Party }) {
           <p className="text-sm text-warning-foreground">{state.duplicateWarning}</p>
           <input type="hidden" name="confirmDuplicate" value="true" />
           <div className="mt-3 flex gap-2">
-            <Button type="submit" className="h-11 flex-1 text-base">
+            <Button type="submit" className="h-10 px-4">
               Add anyway
             </Button>
-            <Button asChild variant="outline" className="h-11 flex-1 text-base">
+            <Button asChild variant="outline" className="h-10 px-4">
               <Link href="/parties">Cancel</Link>
             </Button>
           </div>
@@ -163,7 +169,12 @@ export function PartyForm({ party }: { party?: Party }) {
               {state.error}
             </p>
           ) : null}
-          <SubmitButton label={party ? "Save changes" : "Add party"} />
+          <div className="-mx-5 -mb-5 flex items-center justify-end gap-2.5 border-t border-border bg-muted/40 px-5 py-3.5 sm:-mx-6 sm:-mb-6 sm:px-6">
+            <Button asChild variant="outline" className="h-10 px-4">
+              <Link href="/parties">Cancel</Link>
+            </Button>
+            <SubmitButton label={party ? "Save changes" : "Add party"} />
+          </div>
         </>
       )}
     </form>

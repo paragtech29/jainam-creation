@@ -2,7 +2,7 @@
 // pattern for JobWork. Create/update belong to Phase 3 — out of scope here.
 // deleteJobWork demonstrates the "mismatched userId matches zero rows,
 // never throws, never touches another user's row" principle.
-import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, lte, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import {
   jobWorks,
@@ -165,13 +165,31 @@ export type JobWorkListRow = {
 
 export async function listJobWorksPage(
   userId: string,
-  opts: { search?: string; page?: number; pageSize?: number } = {}
-): Promise<{ rows: JobWorkListRow[]; total: number }> {
-  const { search = "", page = 1, pageSize = 20 } = opts;
+  opts: {
+    search?: string;
+    // The owner's filter panel. Every one is optional; an absent value means
+    // "no constraint", never a silent default.
+    from?: string;
+    to?: string;
+    partyId?: string;
+    karigarId?: string;
+    status?: string;
+    billed?: "yes" | "no";
+    page?: number;
+    pageSize?: number;
+  } = {}
+): Promise<{ rows: JobWorkListRow[]; total: number; grandTotal: number }> {
+  const { search = "", from, to, partyId, karigarId, status, billed, page = 1, pageSize = 20 } = opts;
   const term = search.trim();
 
   const where = and(
     eq(jobWorks.userId, userId),
+    from ? gte(jobWorks.date, from) : undefined,
+    to ? lte(jobWorks.date, to) : undefined,
+    partyId ? eq(jobWorks.partyId, partyId) : undefined,
+    karigarId ? eq(jobWorks.karigarId, karigarId) : undefined,
+    status ? eq(jobWorks.status, status as "PENDING" | "IN_PROGRESS" | "COMPLETED") : undefined,
+    billed === "yes" ? eq(jobWorks.isBilled, true) : billed === "no" ? eq(jobWorks.isBilled, false) : undefined,
     term
       ? or(
           ilike(jobWorks.chalanNo, `%${term}%`),
@@ -183,7 +201,7 @@ export async function listJobWorksPage(
       : undefined
   );
 
-  const [rows, [{ count }]] = await Promise.all([
+  const [rows, [{ count, sum }]] = await Promise.all([
     db
       .select({
         id: jobWorks.id,
@@ -206,12 +224,17 @@ export async function listJobWorksPage(
       .limit(pageSize)
       .offset((page - 1) * pageSize),
     db
-      .select({ count: sql<number>`count(*)::int` })
+      .select({
+        count: sql<number>`count(*)::int`,
+        // Summed in SQL over the WHOLE filtered set, not just this page —
+        // a total that only counted the visible rows would be quietly wrong.
+        sum: sql<number>`coalesce(sum(${jobWorks.total}), 0)::int`,
+      })
       .from(jobWorks)
       .innerJoin(parties, eq(parties.id, jobWorks.partyId))
       .innerJoin(silaiKarigars, eq(silaiKarigars.id, jobWorks.karigarId))
       .where(where),
   ]);
 
-  return { rows, total: count };
+  return { rows, total: count, grandTotal: sum };
 }

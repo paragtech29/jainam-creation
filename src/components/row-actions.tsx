@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Pending = "archive" | "unarchive" | "delete" | null;
 
@@ -56,39 +57,51 @@ export function RowActions({
     <>
       <div className="flex items-center gap-0.5">
         {isArchived ? (
-          <button
-            type="button"
-            onClick={() => setConfirming("unarchive")}
-            aria-label={`Unarchive ${name}`}
-            title="Unarchive"
-            className={iconBtn}
-          >
-            <ArchiveRestore size={16} aria-hidden="true" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setConfirming("unarchive")}
+                aria-label={`Unarchive ${name}`}
+                className={iconBtn}
+              >
+                <ArchiveRestore size={16} aria-hidden="true" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Unarchive</TooltipContent>
+          </Tooltip>
         ) : (
-          <button
-            type="button"
-            onClick={() => setConfirming("archive")}
-            aria-label={`Archive ${name}`}
-            title="Archive"
-            className={iconBtn}
-          >
-            <Archive size={16} aria-hidden="true" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setConfirming("archive")}
+                aria-label={`Archive ${name}`}
+                className={iconBtn}
+              >
+                <Archive size={16} aria-hidden="true" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Archive</TooltipContent>
+          </Tooltip>
         )}
 
         {/* Absent, not disabled, when the record has job works — a button that
             exists only to refuse you is worse than no button. */}
         {canDelete ? (
-          <button
-            type="button"
-            onClick={() => setConfirming("delete")}
-            aria-label={`Delete ${name}`}
-            title="Delete"
-            className={`${iconBtn} hover:bg-destructive/10 hover:text-destructive`}
-          >
-            <Trash2 size={16} aria-hidden="true" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setConfirming("delete")}
+                aria-label={`Delete ${name}`}
+                className={`${iconBtn} hover:bg-destructive/10 hover:text-destructive`}
+              >
+                <Trash2 size={16} aria-hidden="true" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Delete</TooltipContent>
+          </Tooltip>
         ) : null}
       </div>
 

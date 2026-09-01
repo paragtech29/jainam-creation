@@ -34,14 +34,26 @@ export type PartyListRow = {
 
 export async function listPartiesPage(
   userId: string,
-  opts: { search?: string; includeArchived?: boolean; page?: number; pageSize?: number } = {}
+  opts: {
+    search?: string;
+    includeArchived?: boolean;
+    // archivedOnly narrows to JUST the archived rows, for the "Archived"
+    // choice in the list filter. includeArchived alone means "Active + Archived".
+    archivedOnly?: boolean;
+    page?: number;
+    pageSize?: number;
+  } = {}
 ): Promise<{ rows: PartyListRow[]; total: number }> {
-  const { search = "", includeArchived = false, page = 1, pageSize = 20 } = opts;
+  const { search = "", includeArchived = false, archivedOnly = false, page = 1, pageSize = 20 } = opts;
   const term = search.trim();
 
   const where = and(
     eq(parties.userId, userId),
-    includeArchived ? undefined : eq(parties.isArchived, false),
+    archivedOnly
+      ? eq(parties.isArchived, true)
+      : includeArchived
+        ? undefined
+        : eq(parties.isArchived, false),
     term
       ? or(
           ilike(parties.name, `%${term}%`),

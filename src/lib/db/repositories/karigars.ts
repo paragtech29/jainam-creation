@@ -44,14 +44,24 @@ export type KarigarListRow = {
 
 export async function listKarigarsPage(
   userId: string,
-  opts: { search?: string; includeArchived?: boolean; page?: number; pageSize?: number } = {}
+  opts: {
+    search?: string;
+    includeArchived?: boolean;
+    archivedOnly?: boolean;
+    page?: number;
+    pageSize?: number;
+  } = {}
 ): Promise<{ rows: KarigarListRow[]; total: number }> {
-  const { search = "", includeArchived = false, page = 1, pageSize = 20 } = opts;
+  const { search = "", includeArchived = false, archivedOnly = false, page = 1, pageSize = 20 } = opts;
   const term = search.trim();
 
   const where = and(
     eq(silaiKarigars.userId, userId),
-    includeArchived ? undefined : eq(silaiKarigars.isArchived, false),
+    archivedOnly
+      ? eq(silaiKarigars.isArchived, true)
+      : includeArchived
+        ? undefined
+        : eq(silaiKarigars.isArchived, false),
     term
       ? or(
           ilike(silaiKarigars.name, `%${term}%`),

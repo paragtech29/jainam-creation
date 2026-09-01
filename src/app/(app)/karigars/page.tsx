@@ -2,7 +2,7 @@ import { Scissors } from "lucide-react";
 import { getCurrentUserId } from "@/lib/session";
 import { listKarigarsPage } from "@/lib/db/repositories/karigars";
 import { SearchInput } from "@/components/search-input";
-import { SwitchLink } from "@/components/ui/switch-link";
+import { ArchivedFilter } from "@/components/status-filter";
 import { Pagination } from "@/components/pagination";
 import { EmptyState } from "@/components/empty-state";
 import { KarigarList } from "./karigar-list";
@@ -20,33 +20,29 @@ export default async function KarigarsPage({
   }>;
 }) {
   const sp = await searchParams;
-  const showArchived = sp.archived === "1";
+    const archivedMode = sp.archived ?? "active";
+  const includeArchived = archivedMode !== "active";
+  const archivedOnly = archivedMode === "archived";
   const search = sp.q ?? "";
   const page = Math.max(1, Number(sp.page ?? "1") || 1);
 
   const userId = await getCurrentUserId();
   const { rows, total } = await listKarigarsPage(userId, {
     search,
-    includeArchived: showArchived,
+    includeArchived,
+    archivedOnly,
     page,
     pageSize: PAGE_SIZE,
   });
 
-  const filtering = Boolean(search) || showArchived;
-  const toggleHref = new URLSearchParams();
-  if (search) toggleHref.set("q", search);
-  if (!showArchived) toggleHref.set("archived", "1");
+  const filtering = Boolean(search) || archivedMode !== "active";
 
   return (
     <div className="space-y-5">
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <SearchInput placeholder="Search karigar name or contact" />
-        <SwitchLink
-          href={`/karigars?${toggleHref.toString()}`}
-          checked={showArchived}
-          label="Show archived"
-        />
+        <ArchivedFilter />
       </div>
 
       {rows.length === 0 ? (
@@ -57,7 +53,7 @@ export default async function KarigarsPage({
             description={
               search
                 ? `Nothing found for "${search}". Try a shorter search, or clear it to see everyone.`
-                : "There are no archived karigars."
+                : "Nothing to show for this filter."
             }
           />
         ) : (
@@ -76,7 +72,7 @@ export default async function KarigarsPage({
             page={page}
             pageSize={PAGE_SIZE}
             total={total}
-            baseParams={{ q: search, archived: showArchived ? "1" : undefined }}
+            baseParams={{ q: search, archived: archivedMode === "active" ? undefined : archivedMode }}
           />
         </>
       )}

@@ -30,7 +30,7 @@ export function SidebarProfile({
 
       <Link
         href="/settings"
-        title="Change password"
+        
         aria-label="Change password"
         className="flex size-8 shrink-0 items-center justify-center rounded-lg text-sidebar-meta transition-colors hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
       >
@@ -40,7 +40,7 @@ export function SidebarProfile({
       <form action={logoutAction}>
         <button
           type="submit"
-          title="Sign out"
+          
           aria-label="Sign out"
           className="flex size-8 shrink-0 items-center justify-center rounded-lg text-sidebar-meta transition-colors hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
         >

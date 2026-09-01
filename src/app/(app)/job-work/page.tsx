@@ -3,7 +3,6 @@ import { getCurrentUserId } from "@/lib/session";
 import { listJobWorksPage } from "@/lib/db/repositories/jobWorks";
 import { listParties } from "@/lib/db/repositories/parties";
 import { listKarigars } from "@/lib/db/repositories/karigars";
-import { SearchInput } from "@/components/search-input";
 import { Pagination } from "@/components/pagination";
 import { EmptyState } from "@/components/empty-state";
 import { JobWorkFilters } from "./job-work-filters";
@@ -52,7 +51,6 @@ export default async function JobWorkPage({
 
   return (
     <div className="flex flex-col gap-3.5">
-      <SearchInput placeholder="Search chalan no., design no., party or karigar" />
 
       <JobWorkFilters
         parties={parties.map((p) => ({ id: p.id, name: p.name }))}

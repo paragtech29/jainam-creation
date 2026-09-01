@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { SearchInput } from "@/components/search-input";
 
 /**
  * The filter panel from the owner's redesign: date range, party, karigar and
@@ -29,7 +30,7 @@ export function JobWorkFilters({
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }
 
-  const active = ["from", "to", "party", "karigar", "status"].some((k) => get(k));
+  const active = ["q", "from", "to", "party", "karigar", "status", "billed"].some((k) => get(k));
 
   const field = "h-10 rounded-[10px] border border-input bg-card px-2.5 text-[13.5px] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring";
   const label = "text-xs font-medium text-secondary-foreground";
@@ -52,6 +53,18 @@ export function JobWorkFilters({
       </div>
 
       <div className="grid gap-x-3 gap-y-2.5 [grid-template-columns:repeat(auto-fit,minmax(158px,1fr))]">
+        {/* Search sits with the other filters rather than floating above them —
+            it is the same act, narrowing the list. Given two columns because
+            a chalan or design number needs the room. */}
+        <label className="flex flex-col gap-1.5 sm:col-span-2">
+          <span className={label}>Search</span>
+          <SearchInput
+            placeholder="Chalan no., design no., party or karigar"
+            className="w-full max-w-none"
+            height="h-10"
+          />
+        </label>
+
         <label className="flex flex-col gap-1.5">
           <span className={label}>Date from</span>
           <input type="date" value={get("from")} onChange={(e) => set("from", e.target.value)} className={field} />

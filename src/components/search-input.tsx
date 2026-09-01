@@ -3,10 +3,21 @@
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // Search lives in the URL, so a refresh keeps the same view and the page can
 // be bookmarked. Debounced so a slow connection isn't hit on every keystroke.
-export function SearchInput({ placeholder }: { placeholder: string }) {
+export function SearchInput({
+  placeholder,
+  className,
+  height = "h-10",
+}: {
+  placeholder: string;
+  // Callers control width and height so the same control works standing
+  // alone above a list or sitting inside a filter grid.
+  className?: string;
+  height?: string;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -30,7 +41,7 @@ export function SearchInput({ placeholder }: { placeholder: string }) {
   }, [value]);
 
   return (
-    <div className="relative w-full sm:max-w-xs">
+    <div className={cn("relative w-full sm:max-w-xs", className)}>
       <Search
         size={16}
         className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
@@ -42,7 +53,10 @@ export function SearchInput({ placeholder }: { placeholder: string }) {
         onChange={(e) => setValue(e.target.value)}
         placeholder={placeholder}
         aria-label={placeholder}
-        className="h-10 w-full rounded-md border border-input bg-card pl-9 pr-9 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0"
+        className={cn(
+          "w-full rounded-[10px] border border-input bg-card pl-9 pr-9 text-[13.5px] outline-none transition-shadow placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0",
+          height
+        )}
       />
       {value ? (
         <button

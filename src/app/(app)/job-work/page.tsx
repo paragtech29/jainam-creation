@@ -1,25 +1,65 @@
 import { ClipboardList } from "lucide-react";
+import { getCurrentUserId } from "@/lib/session";
+import { listJobWorksPage } from "@/lib/db/repositories/jobWorks";
+import { PageHeader } from "@/components/page-header";
+import { SearchInput } from "@/components/search-input";
+import { Pagination } from "@/components/pagination";
+import { EmptyState } from "@/components/empty-state";
+import { JobWorkList } from "./job-work-list";
 
-export default function JobWorkPage() {
+const PAGE_SIZE = 20;
+
+export default async function JobWorkPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; page?: string; highlight?: string }>;
+}) {
+  const sp = await searchParams;
+  const search = sp.q ?? "";
+  const page = Math.max(1, Number(sp.page ?? "1") || 1);
+
+  const userId = await getCurrentUserId();
+  const { rows, total } = await listJobWorksPage(userId, {
+    search,
+    page,
+    pageSize: PAGE_SIZE,
+  });
+
+  const filtering = Boolean(search);
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">Job Work</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Every chalan you take from a party, with its description, pieces and total.
-        </p>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="Job Work"
+        description="Every chalan you take from a party."
+        actionLabel="Add job work"
+        actionHref="/job-work/new"
+      />
 
-      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card px-6 py-16 text-center">
-        <div className="flex size-12 items-center justify-center rounded-full bg-accent">
-          <ClipboardList size={22} className="text-brand" aria-hidden="true" />
-        </div>
-        <h2 className="mt-4 font-heading text-base font-semibold">Coming next</h2>
-        <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
-          The job work form is the next thing being built — date, party, silai
-          karigar, description rows, pieces and an automatic total.
-        </p>
-      </div>
+      <SearchInput placeholder="Search chalan no., design no., party or karigar" />
+
+      {rows.length === 0 ? (
+        filtering ? (
+          <EmptyState
+            icon={ClipboardList}
+            title="No job works match"
+            description={`Nothing found for "${search}". Try a shorter search, or clear it to see everything.`}
+          />
+        ) : (
+          <EmptyState
+            icon={ClipboardList}
+            title="No job works yet"
+            description="Record your first chalan — date, party, karigar, description rows and pieces."
+            actionLabel="Add your first job work"
+            actionHref="/job-work/new"
+          />
+        )
+      ) : (
+        <>
+          <JobWorkList rows={rows} highlight={sp.highlight} />
+          <Pagination page={page} pageSize={PAGE_SIZE} total={total} baseParams={{ q: search }} />
+        </>
+      )}
     </div>
   );
 }

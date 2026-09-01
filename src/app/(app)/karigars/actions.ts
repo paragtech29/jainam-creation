@@ -12,6 +12,7 @@ import {
   findKarigarsByName,
 } from "@/lib/db/repositories/karigars";
 import { addKarigarToParty } from "@/lib/db/repositories/parties";
+import { replaceKarigarPartyLinks } from "@/lib/db/repositories/karigars";
 import { karigarSchema } from "@/lib/validation/karigar";
 
 export type KarigarFormState =
@@ -107,6 +108,13 @@ export async function updateKarigarAction(
   });
   if (!updated) return { error: "Karigar not found." };
 
+  // Linking is managed here, on the karigar, so an edit replaces the whole
+  // party set atomically. Unticking a party only stops offering this karigar
+  // for that party's NEW job works — existing job works are untouched.
+  const partyIds = formData.getAll("partyIds").map(String).filter(Boolean);
+  await replaceKarigarPartyLinks(userId, karigarId, partyIds);
+
+  revalidatePath("/parties");
   revalidatePath("/karigars");
   revalidatePath(`/karigars/${karigarId}`);
 

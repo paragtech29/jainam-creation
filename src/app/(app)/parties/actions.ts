@@ -10,7 +10,6 @@ import {
   unarchiveParty,
   deleteParty,
   findPartiesByName,
-  replacePartyKarigarLinks,
   addKarigarToParty,
 } from "@/lib/db/repositories/parties";
 import { partySchema, type PartyInput } from "@/lib/validation/party";
@@ -147,33 +146,6 @@ export async function deletePartyAction(partyId: string): Promise<PartyFormState
 // Whole-set save behind the party detail checkbox list. An empty
 // `karigarIds` array is a legitimate, meaningful submission — it means
 // "unlink everyone" — so it is never short-circuited as a no-op.
-export async function linkKarigarsAction(
-  partyId: string,
-  formData: FormData
-): Promise<void> {
-  const userId = await getCurrentUserId();
-
-  // MUST use getAll: repeated checkboxes sharing the name "karigarIds" are
-  // exactly what Object.fromEntries(formData) would collapse and destroy.
-  const karigarIds = formData.getAll("karigarIds").map(String).filter(Boolean);
-
-  try {
-    await replacePartyKarigarLinks(userId, partyId, karigarIds);
-  } catch (err) {
-    // A React 19 form action bound via <form action={...}> must return
-    // void | Promise<void>, so a thrown "Party not found" cannot be
-    // surfaced back to the form as a typed { error } value here. Logging
-    // avoids it bubbling as an unhandled Next.js error boundary; a party
-    // detail page always has a valid party id in normal use.
-    console.error("linkKarigarsAction failed:", err);
-    return;
-  }
-
-  revalidatePath(`/parties/${partyId}`);
-  // A karigar's detail page shows a read-only "Works for" list that just changed.
-  revalidatePath("/karigars");
-}
-
 // Phase 3 contract surface — treat this signature as published. This is
 // deliberately ADDITIVE and single-purpose, kept separate from
 // linkKarigarsAction (the whole-set replace) because Phase 3's job work

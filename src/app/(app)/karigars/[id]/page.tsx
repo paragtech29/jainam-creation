@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { getCurrentUserId } from "@/lib/session";
 import {
@@ -7,7 +8,7 @@ import {
   listPartyIdsForKarigar,
 } from "@/lib/db/repositories/karigars";
 import { listParties } from "@/lib/db/repositories/parties";
-import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { KarigarForm } from "../karigar-form";
 import { KarigarRecordActions } from "./karigar-record-actions";
 
@@ -28,54 +29,41 @@ export default async function KarigarDetailPage({
     listParties(userId),
   ]);
 
-  const linkedPartyNames = allParties
-    .filter((p) => linkedPartyIds.includes(p.id))
-    .map((p) => p.name);
-
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
-      <Link href="/karigars" className="text-sm text-muted-foreground hover:text-foreground">
-        &larr; Back to karigars
-      </Link>
-      <h1 className="mt-2 font-heading text-xl font-medium text-foreground">{karigar.name}</h1>
-
-      <div className="mt-6">
-        <KarigarForm karigar={karigar} />
-      </div>
-
-      <Separator className="my-6" />
-
-      <div className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-foreground">Works for</h2>
-        {linkedPartyNames.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {linkedPartyNames.map((name) => (
-              <span
-                key={name}
-                className="rounded bg-muted px-2 py-1 text-sm text-muted-foreground"
-              >
-                {name}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">Not linked to any party yet.</p>
-        )}
-        <p className="text-sm text-muted-foreground">
-          Linked parties are managed from each party&apos;s own screen.{" "}
-          <Link href="/parties" className="underline underline-offset-4">
-            Go to parties
-          </Link>
+    <div className="mx-auto max-w-2xl space-y-5">
+      <div>
+        <Link
+          href="/karigars"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft size={15} aria-hidden="true" />
+          Back to karigars
+        </Link>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <h1 className="font-heading text-2xl font-semibold tracking-tight">{karigar.name}</h1>
+          {karigar.isArchived ? <Badge variant="secondary">Archived</Badge> : null}
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">
+          <span className="tabular-nums">{jobWorkCount}</span>{" "}
+          {jobWorkCount === 1 ? "job work" : "job works"} recorded
         </p>
       </div>
 
-      <Separator className="my-6" />
+      <div className="rounded-lg border border-border bg-card p-5 shadow-card sm:p-6">
+        <KarigarForm
+          karigar={karigar}
+          parties={allParties.map((p) => ({ id: p.id, name: p.name }))}
+          linkedPartyIds={linkedPartyIds}
+        />
+      </div>
 
-      <KarigarRecordActions
-        karigarId={id}
-        isArchived={karigar.isArchived}
-        canDelete={jobWorkCount === 0}
-      />
+      <div className="rounded-lg border border-border bg-card p-5 shadow-card sm:p-6">
+        <KarigarRecordActions
+          karigarId={id}
+          isArchived={karigar.isArchived}
+          canDelete={jobWorkCount === 0}
+        />
+      </div>
     </div>
   );
 }

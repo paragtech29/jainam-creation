@@ -1,11 +1,12 @@
 // Real (not stubbed) repository for SilaiKarigar, enforcing userId-scoping
 // per docs/DATA-ACCESS.md. Every function that touches business data takes
 // userId as its mandatory first parameter.
-import { and, asc, eq, ilike, notInArray, or, sql } from "drizzle-orm";
+import { and, asc, eq, ilike, inArray, notInArray, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import {
   silaiKarigars,
   partyKarigars,
+  parties,
   jobWorks,
   type SilaiKarigar,
   type NewSilaiKarigar,
@@ -197,4 +198,36 @@ export async function listKarigarsNotLinkedToParty(userId: string, partyId: stri
       )
     )
     .orderBy(silaiKarigars.name);
+}
+
+// Mirror of replacePartyKarigarLinks, from the karigar's side. Linking is now
+// managed on the karigar form, so this is the primary write path for the
+// relationship. Wrapped in a transaction: a half-saved party set would leave
+// the karigar offered for some parties and not others, silently.
+export async function replaceKarigarPartyLinks(
+  userId: string,
+  karigarId: string,
+  partyIds: string[]
+): Promise<void> {
+  const karigar = await getKarigarById(userId, karigarId);
+  if (!karigar) throw new Error("Karigar not found");
+
+  await db.transaction(async (tx) => {
+    await tx.delete(partyKarigars).where(eq(partyKarigars.karigarId, karigarId));
+
+    if (partyIds.length > 0) {
+      // Re-check ownership inside the transaction so a forged party id from a
+      // form post can never link this karigar to someone else's party.
+      const owned = await tx
+        .select({ id: parties.id })
+        .from(parties)
+        .where(and(eq(parties.userId, userId), inArray(parties.id, partyIds)));
+
+      if (owned.length > 0) {
+        await tx
+          .insert(partyKarigars)
+          .values(owned.map((p) => ({ partyId: p.id, karigarId })));
+      }
+    }
+  });
 }

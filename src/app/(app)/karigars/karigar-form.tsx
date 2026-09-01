@@ -22,6 +22,7 @@ import {
   type KarigarFormState,
 } from "./actions";
 import type { SilaiKarigar } from "@/lib/db/repositories/karigars";
+import { MultiSelect } from "@/components/multi-select";
 
 function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
   const { pending } = useFormStatus();
@@ -35,9 +36,11 @@ function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: st
 export function KarigarForm({
   karigar,
   parties,
+  linkedPartyIds = [],
 }: {
   karigar?: SilaiKarigar;
   parties?: { id: string; name: string }[];
+  linkedPartyIds?: string[];
 }) {
   const router = useRouter();
   const isEdit = !!karigar;
@@ -110,34 +113,29 @@ export function KarigarForm({
           </Field>
         </FieldSet>
 
-        {!isEdit ? (
-          <FieldSet>
-            <FieldLegend variant="label">Parties this karigar works for</FieldLegend>
-            {parties && parties.length > 0 ? (
-              <>
-                <div className="flex flex-col gap-2">
-                  {parties.map((p) => (
-                    <label
-                      key={p.id}
-                      className="flex min-h-11 items-center gap-3 rounded-lg border border-border p-3 has-[:checked]:border-primary/30 has-[:checked]:bg-primary/5"
-                    >
-                      <input type="checkbox" name="partyIds" value={p.id} className="size-5" />
-                      <span className="text-sm text-foreground">{p.name}</span>
-                    </label>
-                  ))}
-                </div>
-                <FieldDescription>
-                  Optional — you can also change this later from each party&apos;s screen.
-                </FieldDescription>
-              </>
-            ) : (
+        <FieldSet>
+          <FieldLegend variant="label">Parties this karigar works for</FieldLegend>
+          {parties && parties.length > 0 ? (
+            <>
+              <MultiSelect
+                name="partyIds"
+                options={parties.map((p) => ({ id: p.id, label: p.name }))}
+                defaultSelected={linkedPartyIds}
+                placeholder="Select parties"
+                searchPlaceholder="Search parties"
+                emptyText="No party found."
+              />
               <FieldDescription>
-                No parties yet.{" "}
-                <Link href="/parties/new">Add a party</Link>
+                Only these parties will offer this karigar when you record a job
+                work. Existing job works are never affected by changing this.
               </FieldDescription>
-            )}
-          </FieldSet>
-        ) : null}
+            </>
+          ) : (
+            <FieldDescription>
+              No parties yet. <Link href="/parties/new">Add a party</Link>
+            </FieldDescription>
+          )}
+        </FieldSet>
       </FieldGroup>
 
       {state?.error ? (

@@ -1,40 +1,92 @@
-import Link from "next/link";
+import { Building2 } from "lucide-react";
 import { getCurrentUserId } from "@/lib/session";
-import { listPartiesWithJobWorkCounts } from "@/lib/db/repositories/parties";
-import { Button } from "@/components/ui/button";
+import { listPartiesPage } from "@/lib/db/repositories/parties";
+import { PageHeader } from "@/components/page-header";
+import { SearchInput } from "@/components/search-input";
+import { SwitchLink } from "@/components/ui/switch-link";
+import { Pagination } from "@/components/pagination";
+import { EmptyState } from "@/components/empty-state";
 import { PartyList } from "./party-list";
+
+const PAGE_SIZE = 20;
 
 export default async function PartiesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ archived?: string; highlight?: string }>;
+  searchParams: Promise<{
+    archived?: string;
+    highlight?: string;
+    q?: string;
+    page?: string;
+  }>;
 }) {
-  const { archived, highlight } = await searchParams;
-  const showArchived = archived === "1";
+  const sp = await searchParams;
+  const showArchived = sp.archived === "1";
+  const search = sp.q ?? "";
+  const page = Math.max(1, Number(sp.page ?? "1") || 1);
 
   const userId = await getCurrentUserId();
-  const parties = await listPartiesWithJobWorkCounts(userId, showArchived);
-  // Needed to tell "no parties at all" apart from "parties exist but are
-  // all archived and hidden by the current filter" when the visible list
-  // is empty.
-  const hasAnyParties =
-    parties.length > 0 || (await listPartiesWithJobWorkCounts(userId, true)).length > 0;
+  const { rows, total } = await listPartiesPage(userId, {
+    search,
+    includeArchived: showArchived,
+    page,
+    pageSize: PAGE_SIZE,
+  });
+
+  const filtering = Boolean(search) || showArchived;
+  const toggleHref = new URLSearchParams();
+  if (search) toggleHref.set("q", search);
+  if (!showArchived) toggleHref.set("archived", "1");
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
-      <div className="flex items-start justify-between gap-3">
-        <h1 className="font-heading text-xl font-medium text-foreground">Parties</h1>
-        <Button asChild size="lg" className="h-11">
-          <Link href="/parties/new">Add party</Link>
-        </Button>
+    <div className="space-y-5">
+      <PageHeader
+        title="Parties"
+        description="The businesses who give you work."
+        actionLabel="Add party"
+        actionHref="/parties/new"
+      />
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <SearchInput placeholder="Search party or owner name" />
+        <SwitchLink
+          href={`/parties?${toggleHref.toString()}`}
+          checked={showArchived}
+          label="Show archived"
+        />
       </div>
 
-      <PartyList
-        parties={parties}
-        showArchived={showArchived}
-        highlight={highlight}
-        hasAnyParties={hasAnyParties}
-      />
+      {rows.length === 0 ? (
+        filtering ? (
+          <EmptyState
+            icon={Building2}
+            title="No parties match"
+            description={
+              search
+                ? `Nothing found for "${search}". Try a shorter search, or clear it to see everyone.`
+                : "There are no archived parties."
+            }
+          />
+        ) : (
+          <EmptyState
+            icon={Building2}
+            title="No parties yet"
+            description="Add the businesses who give you work. You'll pick one every time you record a job work."
+            actionLabel="Add your first party"
+            actionHref="/parties/new"
+          />
+        )
+      ) : (
+        <>
+          <PartyList parties={rows} highlight={sp.highlight} />
+          <Pagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={total}
+            baseParams={{ q: search, archived: showArchived ? "1" : undefined }}
+          />
+        </>
+      )}
     </div>
   );
 }

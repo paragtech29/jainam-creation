@@ -1,7 +1,7 @@
 // Real (not stubbed) repository for SilaiKarigar, enforcing userId-scoping
 // per docs/DATA-ACCESS.md. Every function that touches business data takes
 // userId as its mandatory first parameter.
-import { and, eq, notInArray, sql } from "drizzle-orm";
+import { and, asc, eq, ilike, notInArray, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import {
   silaiKarigars,
@@ -32,25 +32,59 @@ export async function getKarigarById(userId: string, id: string): Promise<SilaiK
 }
 
 // Single aggregated query — one LEFT JOIN + GROUP BY, no N+1.
-export async function listKarigarsWithJobWorkCounts(userId: string, includeArchived = false) {
-  return db
-    .select({
-      id: silaiKarigars.id,
-      name: silaiKarigars.name,
-      contact1: silaiKarigars.contact1,
-      isArchived: silaiKarigars.isArchived,
-      jobWorkCount: sql<number>`count(${jobWorks.id})::int`,
-    })
-    .from(silaiKarigars)
-    .leftJoin(jobWorks, eq(jobWorks.karigarId, silaiKarigars.id))
-    .where(
-      and(
-        eq(silaiKarigars.userId, userId),
-        includeArchived ? undefined : eq(silaiKarigars.isArchived, false)
-      )
-    )
-    .groupBy(silaiKarigars.id)
-    .orderBy(silaiKarigars.name);
+export type KarigarListRow = {
+  id: string;
+  name: string;
+  contact1: string | null;
+  isArchived: boolean;
+  jobWorkCount: number;
+  partyCount: number;
+};
+
+export async function listKarigarsPage(
+  userId: string,
+  opts: { search?: string; includeArchived?: boolean; page?: number; pageSize?: number } = {}
+): Promise<{ rows: KarigarListRow[]; total: number }> {
+  const { search = "", includeArchived = false, page = 1, pageSize = 20 } = opts;
+  const term = search.trim();
+
+  const where = and(
+    eq(silaiKarigars.userId, userId),
+    includeArchived ? undefined : eq(silaiKarigars.isArchived, false),
+    term
+      ? or(
+          ilike(silaiKarigars.name, `%${term}%`),
+          ilike(silaiKarigars.contact1, `%${term}%`),
+          ilike(silaiKarigars.address, `%${term}%`)
+        )
+      : undefined
+  );
+
+  const [rows, [{ count }]] = await Promise.all([
+    db
+      .select({
+        id: silaiKarigars.id,
+        name: silaiKarigars.name,
+        contact1: silaiKarigars.contact1,
+        isArchived: silaiKarigars.isArchived,
+        jobWorkCount: sql<number>`count(distinct ${jobWorks.id})::int`,
+        partyCount: sql<number>`count(distinct ${partyKarigars.partyId})::int`,
+      })
+      .from(silaiKarigars)
+      .leftJoin(jobWorks, eq(jobWorks.karigarId, silaiKarigars.id))
+      .leftJoin(partyKarigars, eq(partyKarigars.karigarId, silaiKarigars.id))
+      .where(where)
+      .groupBy(silaiKarigars.id)
+      .orderBy(asc(silaiKarigars.name))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(silaiKarigars)
+      .where(where),
+  ]);
+
+  return { rows, total: count };
 }
 
 // Case-insensitive match for the warn-but-allow duplicate-name check.

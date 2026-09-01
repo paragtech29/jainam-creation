@@ -1,7 +1,7 @@
 // Real (not stubbed) repository for Party, enforcing userId-scoping per
 // docs/DATA-ACCESS.md. Every function that touches business data takes
 // userId as its mandatory first parameter.
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { parties, partyKarigars, silaiKarigars, jobWorks, type Party, type NewParty } from "@/lib/db/schema";
 
@@ -21,26 +21,61 @@ export async function getPartyById(userId: string, id: string): Promise<Party | 
 }
 
 // Single aggregated query — one LEFT JOIN + GROUP BY, no N+1. Powers the
-// list's per-row "may I show Delete?" decision.
-export async function listPartiesWithJobWorkCounts(userId: string, includeArchived = false) {
-  return db
-    .select({
-      id: parties.id,
-      name: parties.name,
-      ownerName1: parties.ownerName1,
-      isArchived: parties.isArchived,
-      jobWorkCount: sql<number>`count(${jobWorks.id})::int`,
-    })
-    .from(parties)
-    .leftJoin(jobWorks, eq(jobWorks.partyId, parties.id))
-    .where(
-      and(
-        eq(parties.userId, userId),
-        includeArchived ? undefined : eq(parties.isArchived, false)
-      )
-    )
-    .groupBy(parties.id)
-    .orderBy(parties.name);
+// list's per-row "may I show Delete?" decision. Search and pagination happen
+// in SQL, not in JS, so the page stays fast as the register grows.
+export type PartyListRow = {
+  id: string;
+  name: string;
+  ownerName1: string;
+  contact1: string | null;
+  isArchived: boolean;
+  jobWorkCount: number;
+};
+
+export async function listPartiesPage(
+  userId: string,
+  opts: { search?: string; includeArchived?: boolean; page?: number; pageSize?: number } = {}
+): Promise<{ rows: PartyListRow[]; total: number }> {
+  const { search = "", includeArchived = false, page = 1, pageSize = 20 } = opts;
+  const term = search.trim();
+
+  const where = and(
+    eq(parties.userId, userId),
+    includeArchived ? undefined : eq(parties.isArchived, false),
+    term
+      ? or(
+          ilike(parties.name, `%${term}%`),
+          ilike(parties.ownerName1, `%${term}%`),
+          ilike(parties.ownerName2, `%${term}%`),
+          ilike(parties.contact1, `%${term}%`)
+        )
+      : undefined
+  );
+
+  const [rows, [{ count }]] = await Promise.all([
+    db
+      .select({
+        id: parties.id,
+        name: parties.name,
+        ownerName1: parties.ownerName1,
+        contact1: parties.contact1,
+        isArchived: parties.isArchived,
+        jobWorkCount: sql<number>`count(${jobWorks.id})::int`,
+      })
+      .from(parties)
+      .leftJoin(jobWorks, eq(jobWorks.partyId, parties.id))
+      .where(where)
+      .groupBy(parties.id)
+      .orderBy(asc(parties.name))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(parties)
+      .where(where),
+  ]);
+
+  return { rows, total: count };
 }
 
 // Case-insensitive match for the warn-but-allow duplicate-name check.

@@ -1,40 +1,92 @@
-import Link from "next/link";
+import { Scissors } from "lucide-react";
 import { getCurrentUserId } from "@/lib/session";
-import { listKarigarsWithJobWorkCounts } from "@/lib/db/repositories/karigars";
-import { Button } from "@/components/ui/button";
+import { listKarigarsPage } from "@/lib/db/repositories/karigars";
+import { PageHeader } from "@/components/page-header";
+import { SearchInput } from "@/components/search-input";
+import { SwitchLink } from "@/components/ui/switch-link";
+import { Pagination } from "@/components/pagination";
+import { EmptyState } from "@/components/empty-state";
 import { KarigarList } from "./karigar-list";
+
+const PAGE_SIZE = 20;
 
 export default async function KarigarsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ archived?: string; highlight?: string }>;
+  searchParams: Promise<{
+    archived?: string;
+    highlight?: string;
+    q?: string;
+    page?: string;
+  }>;
 }) {
-  const { archived, highlight } = await searchParams;
-  const userId = await getCurrentUserId();
-  const showArchived = archived === "1";
+  const sp = await searchParams;
+  const showArchived = sp.archived === "1";
+  const search = sp.q ?? "";
+  const page = Math.max(1, Number(sp.page ?? "1") || 1);
 
-  // Fetch the full set once, then derive the shown rows and whether any
-  // archived-only karigars exist, so the two distinct empty states can be
-  // told apart without a second query.
-  const allRows = await listKarigarsWithJobWorkCounts(userId, true);
-  const rows = showArchived ? allRows : allRows.filter((k) => !k.isArchived);
-  const hasAnyAtAll = allRows.length > 0;
+  const userId = await getCurrentUserId();
+  const { rows, total } = await listKarigarsPage(userId, {
+    search,
+    includeArchived: showArchived,
+    page,
+    pageSize: PAGE_SIZE,
+  });
+
+  const filtering = Boolean(search) || showArchived;
+  const toggleHref = new URLSearchParams();
+  if (search) toggleHref.set("q", search);
+  if (!showArchived) toggleHref.set("archived", "1");
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
-      <div className="flex items-start justify-between gap-3">
-        <h1 className="font-heading text-xl font-medium text-foreground">Silai karigars</h1>
-        <Button asChild size="lg" className="h-11">
-          <Link href="/karigars/new">Add karigar</Link>
-        </Button>
+    <div className="space-y-5">
+      <PageHeader
+        title="Silai Karigar"
+        description="The karigars you collect maal from."
+        actionLabel="Add karigar"
+        actionHref="/karigars/new"
+      />
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <SearchInput placeholder="Search karigar name or contact" />
+        <SwitchLink
+          href={`/karigars?${toggleHref.toString()}`}
+          checked={showArchived}
+          label="Show archived"
+        />
       </div>
 
-      <KarigarList
-        rows={rows}
-        showArchived={showArchived}
-        highlight={highlight}
-        hasAnyAtAll={hasAnyAtAll}
-      />
+      {rows.length === 0 ? (
+        filtering ? (
+          <EmptyState
+            icon={Scissors}
+            title="No karigars match"
+            description={
+              search
+                ? `Nothing found for "${search}". Try a shorter search, or clear it to see everyone.`
+                : "There are no archived karigars."
+            }
+          />
+        ) : (
+          <EmptyState
+            icon={Scissors}
+            title="No karigars yet"
+            description="Add the silai karigars you work with, and tick which parties each one works for."
+            actionLabel="Add your first karigar"
+            actionHref="/karigars/new"
+          />
+        )
+      ) : (
+        <>
+          <KarigarList karigars={rows} highlight={sp.highlight} />
+          <Pagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={total}
+            baseParams={{ q: search, archived: showArchived ? "1" : undefined }}
+          />
+        </>
+      )}
     </div>
   );
 }

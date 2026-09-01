@@ -1,87 +1,101 @@
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { SwitchLink } from "@/components/ui/switch-link";
-
-type KarigarRow = {
-  id: string;
-  name: string;
-  contact1: string | null;
-  isArchived: boolean;
-  jobWorkCount: number;
-};
+import { Badge } from "@/components/ui/badge";
+import type { KarigarListRow } from "@/lib/db/repositories/karigars";
 
 export function KarigarList({
-  rows,
-  showArchived,
+  karigars,
   highlight,
-  hasAnyAtAll,
 }: {
-  rows: KarigarRow[];
-  showArchived: boolean;
+  karigars: KarigarListRow[];
   highlight?: string;
-  hasAnyAtAll: boolean;
 }) {
-  const href = showArchived ? "/karigars" : "/karigars?archived=1";
-
-  if (rows.length === 0) {
-    return (
-      <div className="mt-6 flex flex-col items-center gap-3">
-        <div className="flex w-full justify-end">
-          <SwitchLink href={href} checked={showArchived} label="Show archived" />
-        </div>
-        <Card className="w-full items-center p-6 text-center">
-          {hasAnyAtAll ? (
-            <p className="text-sm text-muted-foreground">
-              All your karigars are archived. Use &quot;Show archived&quot; above to see them.
-            </p>
-          ) : (
-            <>
-              <p className="text-sm text-muted-foreground">
-                No karigars yet. Add your first silai karigar to get started.
-              </p>
-              <Button asChild className="mt-3 h-11">
-                <Link href="/karigars/new">Add karigar</Link>
-              </Button>
-            </>
-          )}
-        </Card>
-      </div>
-    );
-  }
-
   return (
-    <div className="mt-4 flex flex-col gap-3">
-      <div className="flex justify-end">
-        <SwitchLink href={href} checked={showArchived} label="Show archived" />
-      </div>
-
-      <div className="flex flex-col gap-2">
-        {rows.map((k) => (
-          <Link
-            key={k.id}
-            href={`/karigars/${k.id}`}
-            className={cn(
-              "flex min-h-11 items-center justify-between gap-3 rounded-xl bg-card px-4 py-3 ring-1 ring-foreground/10",
-              k.isArchived && "opacity-60",
-              highlight === k.id && "ring-2 ring-primary bg-primary/5"
-            )}
-          >
-            <div className="flex flex-col">
-              <span className="font-medium text-foreground">{k.name}</span>
-              {k.contact1 ? (
-                <span className="text-sm text-muted-foreground tnum">{k.contact1}</span>
-              ) : null}
-            </div>
-            {k.isArchived ? (
-              <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                Archived
-              </span>
-            ) : null}
-          </Link>
+    <>
+      {/* Phone */}
+      <ul className="flex flex-col gap-2.5 md:hidden">
+        {karigars.map((k) => (
+          <li key={k.id}>
+            <Link
+              href={`/karigars/${k.id}`}
+              className={cn(
+                "flex items-center gap-3 rounded-lg border bg-card p-4 shadow-card transition-shadow hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                highlight === k.id ? "border-brand ring-1 ring-brand" : "border-border"
+              )}
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="truncate font-medium">{k.name}</span>
+                  {k.isArchived ? <Badge variant="secondary">Archived</Badge> : null}
+                </div>
+                {k.contact1 ? (
+                  <p className="mt-0.5 truncate text-sm text-muted-foreground">{k.contact1}</p>
+                ) : null}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  <span className="tabular-nums">{k.partyCount}</span>{" "}
+                  {k.partyCount === 1 ? "party" : "parties"} ·{" "}
+                  <span className="tabular-nums">{k.jobWorkCount}</span>{" "}
+                  {k.jobWorkCount === 1 ? "job work" : "job works"}
+                </p>
+              </div>
+              <ChevronRight size={16} className="shrink-0 text-muted-foreground" aria-hidden="true" />
+            </Link>
+          </li>
         ))}
+      </ul>
+
+      {/* Laptop */}
+      <div className="hidden overflow-hidden rounded-lg border border-border bg-card shadow-card md:block">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border bg-muted/40 text-left">
+              <th className="h-11 px-4 font-medium text-muted-foreground">Karigar</th>
+              <th className="h-11 px-4 font-medium text-muted-foreground">Contact</th>
+              <th className="h-11 px-4 text-right font-medium text-muted-foreground">Parties</th>
+              <th className="h-11 px-4 text-right font-medium text-muted-foreground">Job works</th>
+              <th className="h-11 w-10 px-4" />
+            </tr>
+          </thead>
+          <tbody>
+            {karigars.map((k) => (
+              <tr
+                key={k.id}
+                className={cn(
+                  "border-b border-border last:border-0 transition-colors hover:bg-muted/50",
+                  highlight === k.id && "bg-accent/60"
+                )}
+              >
+                <td className="h-12 px-4">
+                  <Link
+                    href={`/karigars/${k.id}`}
+                    className="flex items-center gap-2 font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {k.name}
+                    {k.isArchived ? <Badge variant="secondary">Archived</Badge> : null}
+                  </Link>
+                </td>
+                <td className="px-4 text-muted-foreground">{k.contact1 ?? "—"}</td>
+                <td className="px-4 text-right font-mono tabular-nums text-muted-foreground">
+                  {k.partyCount}
+                </td>
+                <td className="px-4 text-right font-mono tabular-nums text-muted-foreground">
+                  {k.jobWorkCount}
+                </td>
+                <td className="px-4 text-right">
+                  <Link
+                    href={`/karigars/${k.id}`}
+                    aria-label={`Open ${k.name}`}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <ChevronRight size={16} aria-hidden="true" />
+                  </Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-    </div>
+    </>
   );
 }

@@ -1,19 +1,13 @@
 import type { Metadata } from "next";
-import { DM_Sans, Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
+import { Instrument_Sans, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-// Body text. Carried over from the owner's other app so the two feel related.
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
+// Instrument Sans, from the owner's redesign canvas. One family for both body
+// and headings — the design uses weight and tracking for hierarchy rather
+// than a second face.
+const instrument = Instrument_Sans({
+  variable: "--font-instrument",
   subsets: ["latin"],
-  display: "swap",
-});
-
-// Headings only — heavier, slightly tighter than DM Sans.
-const jakarta = Plus_Jakarta_Sans({
-  variable: "--font-jakarta",
-  subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
   display: "swap",
 });
 
@@ -28,7 +22,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Jainam Creation",
-  description: "Job work tracking for Jainam Creation",
+  description: "Job work register for Jainam Creation",
 };
 
 export default function RootLayout({
@@ -39,7 +33,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${dmSans.variable} ${jakarta.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${instrument.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

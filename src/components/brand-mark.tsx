@@ -1,9 +1,7 @@
 import { cn } from "@/lib/utils";
 
-// The JC mark. Placeholder until a real logo exists — kept deliberately simple
-// so swapping in an SVG later touches only this file.
 export function BrandMark({
-  size = 32,
+  size = 34,
   className,
 }: {
   size?: number;
@@ -12,10 +10,10 @@ export function BrandMark({
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-lg bg-brand font-heading font-bold tracking-tight text-primary-foreground",
+        "flex shrink-0 items-center justify-center rounded-[10px] bg-primary font-bold tracking-tight text-primary-foreground",
         className
       )}
-      style={{ width: size, height: size, fontSize: size * 0.4 }}
+      style={{ width: size, height: size, fontSize: size * 0.37 }}
       aria-hidden="true"
     >
       JC
@@ -23,13 +21,35 @@ export function BrandMark({
   );
 }
 
-export function BrandLockup({ className }: { className?: string }) {
+// `onDark` for the sidebar rail; the default is for light surfaces.
+export function BrandLockup({
+  onDark = false,
+  className,
+}: {
+  onDark?: boolean;
+  className?: string;
+}) {
   return (
-    <div className={cn("flex items-center gap-2.5", className)}>
-      <BrandMark size={32} />
-      <span className="font-heading text-base font-semibold tracking-tight text-foreground">
-        Jainam Creation
-      </span>
+    <div className={cn("flex min-w-0 items-center gap-2.5", className)}>
+      <BrandMark size={34} />
+      <div className="flex min-w-0 flex-col leading-[1.15]">
+        <span
+          className={cn(
+            "truncate text-sm font-semibold tracking-tight",
+            onDark ? "text-white" : "text-foreground"
+          )}
+        >
+          Jainam Creation
+        </span>
+        <span
+          className={cn(
+            "truncate text-[11px]",
+            onDark ? "text-sidebar-meta" : "text-muted-foreground"
+          )}
+        >
+          Job work register
+        </span>
+      </div>
     </div>
   );
 }

@@ -1,41 +1,52 @@
 "use client";
 
 import { useState } from "react";
-import { Menu } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Menu, X } from "lucide-react";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { BrandLockup } from "./brand-mark";
 import { NavLinks } from "./nav-link";
 
-// Slides from the left, matching where the sidebar lives on desktop. Radix
-// Dialog underneath handles focus trap, Escape, scroll lock and returning
-// focus to the hamburger on close.
-export function MobileNav() {
+// The same dark rail, slid in from the left on a phone. Radix Dialog beneath
+// gives focus trap, Escape, scroll lock and focus restore for free.
+export function MobileNav({
+  counts,
+  profile,
+}: {
+  counts?: Partial<Record<string, number>>;
+  profile?: React.ReactNode;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger
-        className="flex size-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
+        className="flex size-[38px] items-center justify-center rounded-[10px] border border-input bg-card text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
         aria-label="Open menu"
       >
-        <Menu size={20} aria-hidden="true" />
+        <Menu size={19} aria-hidden="true" />
       </SheetTrigger>
 
-      <SheetContent side="left" className="w-[85vw] max-w-[300px] p-0">
-        <SheetHeader className="h-16 justify-center border-b border-border px-4">
+      <SheetContent
+        side="left"
+        showCloseButton={false}
+        className="flex w-[250px] flex-col gap-6 border-0 bg-sidebar p-[18px_14px]"
+      >
+        <div className="flex items-center gap-2.5">
           <SheetTitle asChild>
-            <BrandLockup />
+            <BrandLockup onDark />
           </SheetTitle>
-        </SheetHeader>
-        <div className="p-3">
-          <NavLinks onNavigate={() => setOpen(false)} />
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Close menu"
+            className="ml-auto flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.08] text-[#B9CFCB] transition-colors hover:text-white"
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
         </div>
+
+        <NavLinks counts={counts} onNavigate={() => setOpen(false)} />
+        {profile}
       </SheetContent>
     </Sheet>
   );

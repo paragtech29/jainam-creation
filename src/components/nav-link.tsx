@@ -5,16 +5,32 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "./nav-items";
 
-// Tinted-pill active state rather than a left border: it reads clearly at any
-// density and doesn't fight the rounded design language elsewhere. Solid brand
-// fills stay reserved for primary buttons so the eye still finds the CTA first.
-export function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+/**
+ * Sidebar navigation, on the dark rail.
+ *
+ * Active is a solid brand pill; inactive is muted teal-grey text. Counts sit
+ * on the right as quiet badges so the owner can see the shape of his data
+ * without opening anything.
+ */
+export function NavLinks({
+  counts,
+  onNavigate,
+}: {
+  counts?: Partial<Record<string, number>>;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
 
   return (
-    <nav className="flex flex-col gap-1" aria-label="Main">
+    <nav className="flex flex-col gap-0.5" aria-label="Main">
+      <span className="px-2 pb-2 text-[10px] font-medium uppercase tracking-[0.14em] text-sidebar-label">
+        Workspace
+      </span>
+
       {NAV_ITEMS.map(({ title, href, icon: Icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
+        const badge = counts?.[href];
+
         return (
           <Link
             key={href}
@@ -22,19 +38,25 @@ export function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             onClick={onNavigate}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex h-10 items-center gap-2.5 rounded-md px-3 text-sm font-medium transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              "flex items-center gap-2.5 rounded-[10px] px-2.5 py-2.5 text-sm font-medium transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
               active
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                ? "bg-primary text-primary-foreground"
+                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-white"
             )}
           >
-            <Icon
-              size={18}
-              className={cn(active ? "text-brand" : "text-muted-foreground")}
-              aria-hidden="true"
-            />
-            {title}
+            <Icon size={18} className="shrink-0" aria-hidden="true" />
+            <span className="flex-1 text-left">{title}</span>
+            {badge != null ? (
+              <span
+                className={cn(
+                  "rounded-full px-[7px] py-px text-[11px] font-semibold tabular-nums",
+                  active ? "bg-white/16 text-white" : "bg-white/[0.07] text-sidebar-meta"
+                )}
+              >
+                {badge}
+              </span>
+            ) : null}
           </Link>
         );
       })}

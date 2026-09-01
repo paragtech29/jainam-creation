@@ -1,19 +1,20 @@
 import { redirect } from "next/navigation";
 import { getCurrentUserId } from "@/lib/session";
 import { getUserById } from "@/lib/db/repositories/users";
+import { listParties } from "@/lib/db/repositories/parties";
+import { listKarigars } from "@/lib/db/repositories/karigars";
 import { signOut } from "@/lib/auth";
 import { BrandLockup } from "@/components/brand-mark";
 import { NavLinks } from "@/components/nav-link";
 import { MobileNav } from "@/components/mobile-nav";
-import { UserMenu } from "@/components/user-menu";
-import { PageTitle } from "@/components/page-title";
+import { SidebarProfile } from "@/components/sidebar-profile";
+import { PageHeaderBar } from "@/components/page-header-bar";
 
 export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Belt-and-braces check in case the proxy matcher is ever misconfigured.
   let userId: string;
   try {
     userId = await getCurrentUserId();
@@ -21,45 +22,40 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  const user = await getUserById(userId);
+  const [user, parties, karigars] = await Promise.all([
+    getUserById(userId),
+    listParties(userId),
+    listKarigars(userId),
+  ]);
   if (!user) redirect("/login");
+
+  // Counts ride along in the nav so the owner can see the shape of his data
+  // without opening anything.
+  const counts = {
+    "/parties": parties.length,
+    "/karigars": karigars.length,
+  };
 
   async function logout() {
     "use server";
     await signOut({ redirectTo: "/login" });
   }
 
+  const profile = <SidebarProfile username={user.username} logoutAction={logout} />;
+
   return (
     <div className="flex min-h-svh bg-background">
-      {/* Full-height sidebar sits beside the header, rather than under a
-          full-width top bar — navigation stays put regardless of scroll. */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
-        <div className="flex h-16 items-center border-b border-sidebar-border px-4">
-          <BrandLockup />
-        </div>
-        <div className="flex-1 p-3">
-          <NavLinks />
-        </div>
+      <aside className="sticky top-0 hidden h-svh w-[238px] shrink-0 flex-col gap-6 bg-sidebar p-[20px_14px] lg:flex">
+        <BrandLockup onDark />
+        <NavLinks counts={counts} />
+        {profile}
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-card px-3 sm:px-6">
-          <MobileNav />
-          <div className="lg:hidden">
-            <BrandLockup className="[&>span]:hidden sm:[&>span]:inline" />
-          </div>
-          <div className="hidden lg:block">
-            <PageTitle />
-          </div>
-          <div className="ml-auto">
-            <UserMenu username={user.username} logoutAction={logout} />
-          </div>
-        </header>
+        <PageHeaderBar mobileNav={<MobileNav counts={counts} profile={profile} />} />
 
-        <main className="flex-1 overflow-x-hidden">
-          <div className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">
-            {children}
-          </div>
+        <main className="w-full max-w-[1360px] flex-1 px-[22px] pb-20 pt-[22px]">
+          {children}
         </main>
       </div>
     </div>

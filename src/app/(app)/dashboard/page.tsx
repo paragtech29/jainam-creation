@@ -1,72 +1,146 @@
 import Link from "next/link";
-import { Building2, Scissors, ClipboardList, ArrowRight } from "lucide-react";
 import { getCurrentUserId } from "@/lib/session";
 import { listParties } from "@/lib/db/repositories/parties";
 import { listKarigars } from "@/lib/db/repositories/karigars";
+import { listJobWorksPage } from "@/lib/db/repositories/jobWorks";
+
+function inr(n: number) {
+  return "₹" + n.toLocaleString("en-IN");
+}
 
 export default async function DashboardPage() {
   const userId = await getCurrentUserId();
-  const [parties, karigars] = await Promise.all([
+
+  const [parties, karigars, jobs] = await Promise.all([
     listParties(userId),
     listKarigars(userId),
+    // Everything, so the month figures are computed from real rows rather
+    // than a sampled page. Fine at this scale; Phase 6 moves the aggregation
+    // into SQL when the dashboard gets its real month picker.
+    listJobWorksPage(userId, { page: 1, pageSize: 1000 }),
   ]);
 
-  const cards = [
-    {
-      title: "Parties",
-      count: parties.length,
-      href: "/parties",
-      icon: Building2,
-      hint: "Businesses who give you work",
-    },
-    {
-      title: "Silai Karigar",
-      count: karigars.length,
-      href: "/karigars",
-      icon: Scissors,
-      hint: "Who you collect the maal from",
-    },
-    {
-      title: "Job Work",
-      count: 0,
-      href: "/job-work",
-      icon: ClipboardList,
-      hint: "Coming next",
-    },
+  const rows = jobs.rows;
+  const now = new Date();
+  const inThisMonth = rows.filter((r) => {
+    const d = new Date(r.date);
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  });
+
+  const monthTotal = inThisMonth.reduce((sum, r) => sum + r.total, 0);
+  const pendingCount = rows.filter((r) => r.status === "PENDING").length;
+  const unbilled = rows.filter((r) => r.status === "COMPLETED" && !r.isBilled);
+  const unbilledTotal = unbilled.reduce((sum, r) => sum + r.total, 0);
+
+  const tiles = [
+    { label: "This month", value: inr(monthTotal), note: `${inThisMonth.length} job ${inThisMonth.length === 1 ? "work" : "works"}` },
+    { label: "Pending", value: String(pendingCount), note: "not started yet" },
+    { label: "Completed, not billed", value: inr(unbilledTotal), note: `${unbilled.length} to invoice`, warn: unbilled.length > 0 },
+    { label: "Parties", value: String(parties.length), note: `${karigars.length} karigars` },
   ];
 
+  // Per-party earnings this month, biggest first — the question he asked for
+  // at the very start: "how much did I get from Mayra last month".
+  const byParty = new Map<string, number>();
+  for (const r of inThisMonth) byParty.set(r.partyName, (byParty.get(r.partyName) ?? 0) + r.total);
+  const partyBars = [...byParty.entries()]
+    .map(([name, amount]) => ({ name, amount }))
+    .sort((a, b) => b.amount - a.amount);
+  const biggest = partyBars[0]?.amount ?? 0;
+
+  const recent = rows.slice(0, 6);
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Monthly income and per-party earnings will appear here once job works
-          are being recorded.
-        </p>
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(186px,1fr))]">
+        {tiles.map((t) => (
+          <div
+            key={t.label}
+            className="flex flex-col gap-2 rounded-[14px] border border-border bg-card p-[15px_17px]"
+          >
+            <span className="text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+              {t.label}
+            </span>
+            <span className="text-[29px] font-bold leading-none tracking-[-0.03em] tabular-nums">
+              {t.value}
+            </span>
+            <span className={t.warn ? "text-xs font-medium text-status-pending" : "text-xs text-muted-foreground"}>
+              {t.note}
+            </span>
+          </div>
+        ))}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {cards.map(({ title, count, href, icon: Icon, hint }) => (
-          <Link
-            key={href}
-            href={href}
-            className="group rounded-lg border border-border bg-card p-5 shadow-card transition-shadow hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex size-10 items-center justify-center rounded-md bg-accent">
-                <Icon size={18} className="text-brand" aria-hidden="true" />
-              </div>
-              <ArrowRight
-                size={16}
-                className="text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                aria-hidden="true"
-              />
+      <div className="grid items-start gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(330px,1fr))]">
+        <section className="overflow-hidden rounded-[14px] border border-border bg-card">
+          <div className="flex items-baseline justify-between gap-3 border-b border-border px-[18px] py-3.5">
+            <span className="text-[14.5px] font-semibold tracking-tight">Recent job work</span>
+            <Link href="/job-work" className="text-xs font-medium text-primary hover:underline">
+              View all
+            </Link>
+          </div>
+
+          {recent.length === 0 ? (
+            <p className="px-[18px] py-8 text-center text-sm text-muted-foreground">
+              Nothing recorded yet.{" "}
+              <Link href="/job-work/new" className="font-medium text-primary hover:underline">
+                Add your first job work
+              </Link>
+              .
+            </p>
+          ) : (
+            recent.map((r) => (
+              <Link
+                key={r.id}
+                href={`/job-work/${r.id}`}
+                className="flex items-center gap-3 border-b border-border px-[18px] py-3 transition-colors last:border-0 hover:bg-muted/40"
+              >
+                <div className="flex size-[34px] shrink-0 items-center justify-center rounded-[9px] bg-accent text-xs font-semibold text-accent-foreground">
+                  {r.partyName.slice(0, 2).toUpperCase()}
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col leading-tight">
+                  <span className="truncate text-[13.5px] font-medium">{r.partyName}</span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {r.karigarName} · {r.pieces} × ₹{r.rate}
+                  </span>
+                </div>
+                <span className="shrink-0 font-mono text-[13px] tabular-nums">{inr(r.total)}</span>
+              </Link>
+            ))
+          )}
+        </section>
+
+        <section className="overflow-hidden rounded-[14px] border border-border bg-card">
+          <div className="flex items-baseline justify-between gap-3 border-b border-border px-[18px] py-3.5">
+            <span className="text-[14.5px] font-semibold tracking-tight">Work by party</span>
+            <span className="text-xs text-muted-foreground">this month</span>
+          </div>
+
+          {partyBars.length === 0 ? (
+            <p className="px-[18px] py-8 text-center text-sm text-muted-foreground">
+              No job works this month yet.
+            </p>
+          ) : (
+            <div className="py-2">
+              {partyBars.map((p) => (
+                <div key={p.name} className="flex flex-col gap-[7px] px-[18px] py-2.5">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="truncate text-[13.5px] font-medium">{p.name}</span>
+                    <span className="shrink-0 font-mono text-[13px] tabular-nums text-secondary-foreground">
+                      {inr(p.amount)}
+                    </span>
+                  </div>
+                  <div className="h-[7px] overflow-hidden rounded-full bg-accent">
+                    <div
+                      className="h-full rounded-full bg-primary"
+                      style={{ width: `${biggest > 0 ? Math.max(4, (p.amount / biggest) * 100) : 0}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
-            <p className="mt-4 font-heading text-2xl font-semibold tabular-nums">{count}</p>
-            <p className="mt-0.5 text-sm font-medium text-foreground">{title}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>
-          </Link>
-        ))}
+          )}
+        </section>
       </div>
     </div>
   );

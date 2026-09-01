@@ -1,7 +1,6 @@
 import { Scissors } from "lucide-react";
 import { getCurrentUserId } from "@/lib/session";
 import { listKarigarsPage } from "@/lib/db/repositories/karigars";
-import { PageHeader } from "@/components/page-header";
 import { SearchInput } from "@/components/search-input";
 import { SwitchLink } from "@/components/ui/switch-link";
 import { Pagination } from "@/components/pagination";
@@ -40,12 +39,6 @@ export default async function KarigarsPage({
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Silai Karigar"
-        description="The karigars you collect maal from."
-        actionLabel="Add karigar"
-        actionHref="/karigars/new"
-      />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <SearchInput placeholder="Search karigar name or contact" />

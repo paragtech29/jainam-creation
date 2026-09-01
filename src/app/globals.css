@@ -7,14 +7,17 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-dm-sans);
+  --font-sans: var(--font-instrument);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-jakarta);
+  --font-heading: var(--font-instrument);
   --color-brand: var(--brand);
   --color-brand-light: var(--brand-light);
   --color-brand-dark: var(--brand-dark);
   --color-brand-accent: var(--brand-accent);
   --color-brand-accent-light: var(--brand-accent-light);
+  --color-sidebar-deep: var(--sidebar-deep);
+  --color-sidebar-label: var(--sidebar-label);
+  --color-sidebar-meta: var(--sidebar-meta);
   --shadow-card: 0 1px 3px rgb(0 0 0 / 0.04), 0 1px 2px rgb(0 0 0 / 0.02);
   --shadow-card-hover: 0 4px 16px rgb(0 0 0 / 0.06);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -76,38 +79,41 @@
    Light mode only (deliberate — see PROJECT.md decisions).
    ───────────────────────────────────────────────────────────── */
 :root {
-  /* Brand */
-  --brand: #0c6e6b;
-  --brand-light: #e8f5f4;
-  --brand-dark: #094e4c;
+  /* Brand — from the owner's redesign canvas (TEAL / DEEP). */
+  --brand: #0E7168;
+  --brand-light: #E6F1EF;
+  --brand-dark: #0B5F57;
+  /* The sidebar ground. Deliberately near-black teal, not grey: it frames the
+     work area and makes the active nav pill read without shouting. */
+  --sidebar-deep: #08302C;
   --brand-accent: #f59e0b;
   --brand-accent-light: #fef3c7;
 
   /* Surfaces — soft grey page, white cards. Stops the stark white glare. */
-  --background: #f7f8fa;
-  --foreground: #1e293b;
+  --background: #F3F6F5;
+  --foreground: #0B1F1C;
   --card: #ffffff;
-  --card-foreground: #1e293b;
+  --card-foreground: #0B1F1C;
   --popover: #ffffff;
-  --popover-foreground: #1e293b;
+  --popover-foreground: #0B1F1C;
 
   /* Primary actions */
-  --primary: #0c6e6b;
+  --primary: #0E7168;
   --primary-foreground: #ffffff;
 
   --secondary: #f3f4f6;
-  --secondary-foreground: #334155;
+  --secondary-foreground: #3E4E4B;
   --muted: #f3f4f6;
-  --muted-foreground: #64748b;
+  --muted-foreground: #6E807D;
 
   /* Accent surfaces use the tinted teal, not grey */
-  --accent: #e8f5f4;
-  --accent-foreground: #094e4c;
+  --accent: #E6F1EF;
+  --accent-foreground: #0B5F57;
 
   --destructive: #ef4444;
-  --border: #eef0f3;
-  --input: #e2e8f0;
-  --ring: #0c6e6b;
+  --border: #E1E9E7;
+  --input: #DCE5E3;
+  --ring: #0E7168;
 
   /* Semantic feedback. Success is a distinct green from the teal brand,
      so a success message never reads as just another primary element. */
@@ -125,26 +131,28 @@
   --status-progress-bg: #eff6ff;
   --status-completed: #15803d;
   --status-completed-bg: #dcfce7;
-  --status-billed: #0c6e6b;
-  --status-billed-bg: #e8f5f4;
+  --status-billed: #0E7168;
+  --status-billed-bg: #E6F1EF;
 
   /* Charts — distinct, colourblind-tolerable ordering */
-  --chart-1: #0c6e6b;
+  --chart-1: #0E7168;
   --chart-2: #f59e0b;
   --chart-3: #4299e1;
   --chart-4: #22c55e;
   --chart-5: #94a3b8;
 
-  --radius: 0.625rem; /* 10px — matches the source app */
+  --radius: 0.875rem; /* 14px cards; inputs step down via --radius-md */
 
-  --sidebar: #ffffff;
-  --sidebar-foreground: #1e293b;
-  --sidebar-primary: #0c6e6b;
+  --sidebar: #08302C;
+  --sidebar-foreground: #B9CFCB;
+  --sidebar-primary: #0E7168;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e8f5f4;
-  --sidebar-accent-foreground: #094e4c;
-  --sidebar-border: #eef0f3;
-  --sidebar-ring: #0c6e6b;
+  --sidebar-accent: rgb(255 255 255 / 0.07);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(255 255 255 / 0.08);
+  --sidebar-ring: #0E7168;
+  --sidebar-label: #5E8C86;
+  --sidebar-meta: #7FA8A2;
 }
 
 /* Dark mode is NOT enabled for v1 (owner chose light only). This block only

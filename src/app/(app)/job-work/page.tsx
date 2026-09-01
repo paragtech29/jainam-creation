@@ -1,7 +1,6 @@
 import { ClipboardList } from "lucide-react";
 import { getCurrentUserId } from "@/lib/session";
 import { listJobWorksPage } from "@/lib/db/repositories/jobWorks";
-import { PageHeader } from "@/components/page-header";
 import { SearchInput } from "@/components/search-input";
 import { Pagination } from "@/components/pagination";
 import { EmptyState } from "@/components/empty-state";
@@ -29,12 +28,6 @@ export default async function JobWorkPage({
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Job Work"
-        description="Every chalan you take from a party."
-        actionLabel="Add job work"
-        actionHref="/job-work/new"
-      />
 
       <SearchInput placeholder="Search chalan no., design no., party or karigar" />
 

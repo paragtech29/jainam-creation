@@ -54,7 +54,7 @@ export function KarigarRecordActions({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleteError, setDeleteError] = useState<string | undefined>(undefined);
 
-  async function handleDelete(_formData: FormData) {
+  async function handleDelete() {
     const result = await deleteKarigarAction(karigarId);
     if (result && "error" in result) {
       setDeleteError(result.error);

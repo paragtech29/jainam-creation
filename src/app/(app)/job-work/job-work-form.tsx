@@ -1,0 +1,516 @@
+"use client";
+
+// The job work form — the screen this entire application exists to provide.
+// Modeled on karigar-form.tsx: useActionState + the field primitive +
+// useFormStatus SubmitButton, with a useEffect that clears the draft and
+// redirects on success.
+//
+// PITFALL — never key a child on the action state. Doing something like
+// <DescriptionRows key={JSON.stringify(state)}> would remount the rows (and
+// wipe every typed row) the moment a server validation error comes back,
+// which is precisely the half-filled-form-destroyed bug this whole plan
+// exists to avoid. Nothing in this file keys a child on `state`.
+import { useActionState, useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useFormStatus } from "react-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from "@/components/ui/field";
+import { createJobWorkAction, updateJobWorkAction, type JobWorkFormState } from "./actions";
+import { linkSingleKarigarAction } from "../parties/actions";
+import { DescriptionRows } from "./description-rows";
+import { useDerivedRate } from "./use-derived-rate";
+import { useJobWorkDraft, type JobWorkDraft } from "./use-job-work-draft";
+
+type JobWorkStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED";
+
+const STATUS_OPTIONS: { value: JobWorkStatus; label: string }[] = [
+  { value: "PENDING", label: "Pending" },
+  { value: "IN_PROGRESS", label: "In Progress" },
+  { value: "COMPLETED", label: "Completed" },
+];
+
+function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" disabled={pending} className="h-11 w-full text-base">
+      {pending ? pendingLabel : label}
+    </Button>
+  );
+}
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export function JobWorkForm({
+  jobWork,
+  parties,
+  karigars,
+  karigarPartyLinks,
+  descriptionTypes,
+}: {
+  jobWork?: {
+    id: string;
+    date: string;
+    partyId: string;
+    karigarId: string;
+    chalanNo: string | null;
+    partyDesignNo: string | null;
+    computerDesignNo: string | null;
+    pieces: number;
+    rate: number;
+    comment: string | null;
+    status: JobWorkStatus;
+    isBilled: boolean;
+    lines: { descriptionTypeId: string; priceUsed: number }[];
+  };
+  parties: { id: string; name: string }[];
+  karigars: { id: string; name: string }[];
+  karigarPartyLinks: { karigarId: string; partyId: string }[];
+  descriptionTypes: { id: string; name: string }[];
+}) {
+  const router = useRouter();
+  const isEdit = !!jobWork;
+
+  const action = isEdit
+    ? updateJobWorkAction.bind(null, jobWork.id)
+    : createJobWorkAction;
+  const [state, formAction] = useActionState<JobWorkFormState, FormData>(action, undefined);
+
+  // Draft key convention: two different job works being edited must never
+  // share a draft, so the edit key is namespaced by id.
+  const draftKey = jobWork ? `jobwork-draft-edit-${jobWork.id}` : "jobwork-draft-new";
+  const initialDraft: JobWorkDraft = {
+    date: jobWork?.date ?? todayISO(),
+    partyId: jobWork?.partyId ?? "",
+    karigarId: jobWork?.karigarId ?? "",
+    pieces: jobWork ? String(jobWork.pieces) : "",
+    rate: jobWork ? String(jobWork.rate) : "",
+    rateTouched: jobWork ? jobWork.rate !== jobWork.lines.reduce((a, l) => a + l.priceUsed, 0) : false,
+    chalanNo: jobWork?.chalanNo ?? "",
+    partyDesignNo: jobWork?.partyDesignNo ?? "",
+    computerDesignNo: jobWork?.computerDesignNo ?? "",
+    comment: jobWork?.comment ?? "",
+    status: jobWork?.status ?? "PENDING",
+    isBilled: jobWork?.isBilled ?? false,
+    rows: [],
+  };
+  const { draft, setDraft, clearDraft } = useJobWorkDraft(draftKey, initialDraft);
+
+  // Description rows only expose an aggregate price array to the parent
+  // (DescriptionRows's onPricesChange), never per-row description-type ids —
+  // that component belongs to 03-04 and is consumed as-is here. So the row
+  // TYPE selections cannot round-trip through the sessionStorage draft; only
+  // the numeric rowPrices (used for the live total/rate) are kept in local
+  // state. This is a deliberate, documented limitation — see SUMMARY.md.
+  const [rowPrices, setRowPrices] = useState<number[]>(
+    jobWork ? jobWork.lines.map((l) => l.priceUsed) : []
+  );
+
+  const rateHook = useDerivedRate(rowPrices, jobWork?.rate, initialDraft.rateTouched);
+
+  // Keep the draft's rate/rateTouched mirror in sync (one-way: draft mirrors
+  // the hook, the hook is never driven by the draft after initial mount).
+  useEffect(() => {
+    setDraft((d) =>
+      d.rate === rateHook.rate && d.rateTouched === rateHook.touched
+        ? d
+        : { ...d, rate: rateHook.rate, rateTouched: rateHook.touched }
+    );
+  }, [rateHook.rate, rateHook.touched, setDraft]);
+
+  // Mirror rowPrices into the draft too, so a refresh at least preserves the
+  // number of rows and their prices for the live total/rate — DescriptionRows
+  // (03-04, consumed as-is) exposes only this aggregate price array to the
+  // parent, never per-row description-type ids, so the TYPE picked for each
+  // row cannot round-trip through the draft. Documented limitation.
+  useEffect(() => {
+    setDraft((d) => ({
+      ...d,
+      rows: rowPrices.map((p) => ({ descriptionTypeId: "", price: String(p) })),
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowPrices]);
+
+  useEffect(() => {
+    if (state?.success && state.newId) {
+      clearDraft();
+      router.push(`/job-work?highlight=${state.newId}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state?.success, state?.newId]);
+
+  const selectedPartyId = draft.partyId;
+  const linkedKarigars = karigars.filter((k) =>
+    karigarPartyLinks.some((l) => l.karigarId === k.id && l.partyId === selectedPartyId)
+  );
+  const unlinkedKarigars = karigars.filter(
+    (k) => !linkedKarigars.some((lk) => lk.id === k.id)
+  );
+
+  const [linkingKarigarId, setLinkingKarigarId] = useState("");
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [linkPending, startLinkTransition] = useTransition();
+
+  function handleLinkKarigar() {
+    if (!selectedPartyId || !linkingKarigarId) return;
+    startLinkTransition(async () => {
+      const res = await linkSingleKarigarAction(selectedPartyId, linkingKarigarId);
+      if ("error" in res) {
+        setLinkError(res.error);
+        return;
+      }
+      setLinkError(null);
+      setDraft((d) => ({ ...d, karigarId: linkingKarigarId }));
+      setLinkingKarigarId("");
+      // Re-runs the server page's data fetch without unmounting this client
+      // component's state — the half-filled form (backed by the draft
+      // anyway) survives.
+      router.refresh();
+    });
+  }
+
+  const pieces = Number(draft.pieces) || 0;
+  const rateNum = Number(rateHook.rate) || 0;
+  const totalPreview = pieces * rateNum;
+
+  function handleStatusChange(value: JobWorkStatus) {
+    setDraft((d) => ({
+      ...d,
+      status: value,
+      // If status leaves Completed while Is Billed is on, turn it off in the
+      // same handler so what he sees on screen is what will be posted — the
+      // server enforces this independently regardless (03-02).
+      isBilled: value === "COMPLETED" ? d.isBilled : false,
+    }));
+  }
+
+  return (
+    <form action={formAction} className="flex flex-col gap-6">
+      <FieldGroup>
+        <FieldSet>
+          <FieldLegend variant="label">Job work</FieldLegend>
+
+          <Field>
+            <FieldLabel htmlFor="date">Date</FieldLabel>
+            <Input
+              id="date"
+              name="date"
+              type="date"
+              required
+              value={draft.date}
+              onChange={(e) => setDraft((d) => ({ ...d, date: e.target.value }))}
+              className="h-11 text-base tnum"
+            />
+            <FieldError errors={[{ message: state?.fieldErrors?.date }]} />
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="partyId">Party</FieldLabel>
+            <Select
+              name="partyId"
+              value={draft.partyId}
+              onValueChange={(v) =>
+                // Changing the party invalidates any previously-selected
+                // karigar — a karigar linked to Mayra is not valid for
+                // Jignesh bhai, so leaving the old selection would post a
+                // link that does not exist.
+                setDraft((d) => ({ ...d, partyId: v, karigarId: "" }))
+              }
+            >
+              <SelectTrigger id="partyId" className="h-11 w-full">
+                <SelectValue placeholder="Select a party" />
+              </SelectTrigger>
+              <SelectContent>
+                {parties.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FieldError errors={[{ message: state?.fieldErrors?.partyId }]} />
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="karigarId">Silai Karigar</FieldLabel>
+            {!selectedPartyId ? (
+              <>
+                <Select name="karigarId" value="" disabled>
+                  <SelectTrigger id="karigarId" className="h-11 w-full">
+                    <SelectValue placeholder="Choose a party first" />
+                  </SelectTrigger>
+                  <SelectContent />
+                </Select>
+                <FieldDescription>Choose a party first.</FieldDescription>
+              </>
+            ) : linkedKarigars.length === 0 ? (
+              <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
+                <FieldDescription>
+                  No karigars are linked to this party yet. Link one now to continue.
+                </FieldDescription>
+                {/* Hidden so karigarId still posts if a value was set before the
+                    party temporarily had zero linked karigars (edge case,
+                    belt-and-braces). */}
+                <input type="hidden" name="karigarId" value={draft.karigarId} />
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <Select value={linkingKarigarId} onValueChange={setLinkingKarigarId}>
+                      <SelectTrigger className="h-11 w-full">
+                        <SelectValue placeholder="Pick a karigar to link" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {unlinkedKarigars.map((k) => (
+                          <SelectItem key={k.id} value={k.id}>
+                            {k.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    type="button"
+                    disabled={!linkingKarigarId || linkPending}
+                    onClick={handleLinkKarigar}
+                    className="h-11"
+                  >
+                    {linkPending ? "Linking..." : "Link"}
+                  </Button>
+                </div>
+                {linkError ? (
+                  <p role="alert" className="text-sm text-destructive">
+                    {linkError}
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <Select
+                name="karigarId"
+                value={draft.karigarId}
+                onValueChange={(v) => setDraft((d) => ({ ...d, karigarId: v }))}
+                required
+              >
+                <SelectTrigger id="karigarId" className="h-11 w-full">
+                  <SelectValue placeholder="Select a karigar" />
+                </SelectTrigger>
+                <SelectContent>
+                  {linkedKarigars.map((k) => (
+                    <SelectItem key={k.id} value={k.id}>
+                      {k.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <FieldError errors={[{ message: state?.fieldErrors?.karigarId }]} />
+          </Field>
+        </FieldSet>
+
+        <FieldSet>
+          <FieldLegend variant="label">Work done</FieldLegend>
+
+          <DescriptionRows
+            types={descriptionTypes}
+            initialRows={jobWork?.lines.map((l) => ({
+              descriptionTypeId: l.descriptionTypeId,
+              price: l.priceUsed,
+            }))}
+            onPricesChange={setRowPrices}
+            error={state?.fieldErrors?.lines}
+          />
+
+          <Field orientation="responsive">
+            <FieldContent>
+              <FieldLabel htmlFor="pieces">Pieces</FieldLabel>
+              <Input
+                id="pieces"
+                name="pieces"
+                type="number"
+                inputMode="numeric"
+                min="1"
+                step="1"
+                required
+                value={draft.pieces}
+                onChange={(e) => setDraft((d) => ({ ...d, pieces: e.target.value }))}
+                className="h-11 tnum"
+              />
+              <FieldError errors={[{ message: state?.fieldErrors?.pieces }]} />
+            </FieldContent>
+            <FieldContent>
+              <FieldLabel htmlFor="rate">Rate</FieldLabel>
+              <Input
+                id="rate"
+                name="rate"
+                inputMode="numeric"
+                value={rateHook.rate}
+                onChange={(e) => rateHook.onRateChange(e.target.value)}
+                className="h-11 tnum"
+              />
+              {!rateHook.touched ? (
+                <FieldDescription>Auto-calculated from the description rows below.</FieldDescription>
+              ) : Number(rateHook.rate) !== rateHook.computedSum ? (
+                <FieldDescription>
+                  Auto: ₹{rateHook.computedSum.toLocaleString("en-IN")}{" "}
+                  <button
+                    type="button"
+                    onClick={rateHook.resetToAuto}
+                    className="text-primary underline underline-offset-4"
+                  >
+                    Use auto (₹{rateHook.computedSum.toLocaleString("en-IN")})
+                  </button>
+                </FieldDescription>
+              ) : null}
+              <FieldError errors={[{ message: state?.fieldErrors?.rate }]} />
+            </FieldContent>
+          </Field>
+
+          <Field>
+            <FieldLabel>Total</FieldLabel>
+            <p className="tnum text-2xl font-semibold">
+              ₹{totalPreview.toLocaleString("en-IN")}
+            </p>
+            <FieldDescription>Total is calculated and saved by the server.</FieldDescription>
+          </Field>
+        </FieldSet>
+
+        <FieldSet>
+          <FieldLegend variant="label">Design numbers</FieldLegend>
+
+          <Field>
+            <FieldLabel htmlFor="chalanNo">Chalan No</FieldLabel>
+            <Input
+              id="chalanNo"
+              name="chalanNo"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={draft.chalanNo}
+              onChange={(e) => setDraft((d) => ({ ...d, chalanNo: e.target.value }))}
+              className="h-11 tnum"
+            />
+            <FieldDescription>
+              The same chalan no. can be used on more than one job work.
+            </FieldDescription>
+            <FieldError errors={[{ message: state?.fieldErrors?.chalanNo }]} />
+          </Field>
+
+          <Field orientation="responsive">
+            <FieldContent>
+              <FieldLabel htmlFor="partyDesignNo">Party Design No</FieldLabel>
+              <Input
+                id="partyDesignNo"
+                name="partyDesignNo"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={draft.partyDesignNo}
+                onChange={(e) => setDraft((d) => ({ ...d, partyDesignNo: e.target.value }))}
+                className="h-11 tnum"
+              />
+              <FieldError errors={[{ message: state?.fieldErrors?.partyDesignNo }]} />
+            </FieldContent>
+            <FieldContent>
+              <FieldLabel htmlFor="computerDesignNo">Computer Design No</FieldLabel>
+              <Input
+                id="computerDesignNo"
+                name="computerDesignNo"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={draft.computerDesignNo}
+                onChange={(e) => setDraft((d) => ({ ...d, computerDesignNo: e.target.value }))}
+                className="h-11 tnum"
+              />
+              <FieldError errors={[{ message: state?.fieldErrors?.computerDesignNo }]} />
+            </FieldContent>
+          </Field>
+        </FieldSet>
+
+        <FieldSet>
+          <FieldLegend variant="label">Notes & status</FieldLegend>
+
+          <Field>
+            <FieldLabel htmlFor="comment">Comments</FieldLabel>
+            <Textarea
+              id="comment"
+              name="comment"
+              value={draft.comment}
+              onChange={(e) => setDraft((d) => ({ ...d, comment: e.target.value }))}
+              className="min-h-24 text-base"
+            />
+            <FieldError errors={[{ message: state?.fieldErrors?.comment }]} />
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="status">Job Work Status</FieldLabel>
+            <Select
+              name="status"
+              value={draft.status}
+              onValueChange={(v) => handleStatusChange(v as JobWorkStatus)}
+            >
+              <SelectTrigger id="status" className="h-11 w-full">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FieldError errors={[{ message: state?.fieldErrors?.status }]} />
+          </Field>
+
+          <Field orientation="horizontal">
+            <FieldContent>
+              <FieldLabel htmlFor="isBilled">Is Billed</FieldLabel>
+              {draft.status !== "COMPLETED" ? (
+                <FieldDescription>
+                  Available once this job work&apos;s status is Completed.
+                </FieldDescription>
+              ) : null}
+            </FieldContent>
+            <Switch
+              id="isBilled"
+              name="isBilled"
+              checked={draft.isBilled}
+              disabled={draft.status !== "COMPLETED"}
+              onCheckedChange={(checked) => setDraft((d) => ({ ...d, isBilled: checked }))}
+            />
+          </Field>
+
+          {/* Photos are Phase 4's scope — no upload UI here, and photo1Url /
+              photo2Url are never posted from this form. */}
+        </FieldSet>
+      </FieldGroup>
+
+      {state?.error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {state.error}
+        </p>
+      ) : null}
+
+      <SubmitButton
+        label={isEdit ? "Save changes" : "Save job work"}
+        pendingLabel={isEdit ? "Saving..." : "Saving..."}
+      />
+    </form>
+  );
+}

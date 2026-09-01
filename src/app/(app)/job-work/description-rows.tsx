@@ -42,12 +42,16 @@ function newRow(): Row {
 export function DescriptionRows({
   initialRows,
   types,
-  onPricesChange,
+  onRowsChange,
   error,
 }: {
   initialRows?: { descriptionTypeId: string; price: number }[];
   types: DescriptionType[];
-  onPricesChange: (prices: number[]) => void;
+  // Emits the FULL rows, not just prices. The parent needs the type ids to
+  // persist a draft — a draft that restores prices but blanks every type
+  // would leave the owner re-picking the fiddliest part of the form, which
+  // defeats the point of having a draft at all.
+  onRowsChange: (rows: { descriptionTypeId: string; price: string }[]) => void;
   error?: string;
 }) {
   const [availableTypes, setAvailableTypes] = useState(types);
@@ -62,18 +66,16 @@ export function DescriptionRows({
   );
   const [addingTypeForRow, setAddingTypeForRow] = useState<string | null>(null);
 
-  function emitPrices(next: Row[]) {
-    onPricesChange(
-      next
-        .map((r) => Number(r.price))
-        .filter((n) => Number.isFinite(n) && Number.isInteger(n) && n > 0)
+  function emitRows(next: Row[]) {
+    onRowsChange(
+      next.map((r) => ({ descriptionTypeId: r.descriptionTypeId, price: r.price }))
     );
   }
 
   function updateRow(key: string, patch: Partial<Row>) {
     setRows((cur) => {
       const next = cur.map((r) => (r.key === key ? { ...r, ...patch } : r));
-      emitPrices(next);
+      emitRows(next);
       return next;
     });
   }
@@ -85,13 +87,13 @@ export function DescriptionRows({
   function removeRow(key: string) {
     setRows((cur) => {
       const next = cur.filter((r) => r.key !== key);
-      emitPrices(next);
+      emitRows(next);
       // Never leave the owner with nothing to type into.
       const result = next.length > 0 ? next : [newRow()];
       if (next.length === 0) {
         // The fresh blank row carries no price, so pricing doesn't change,
         // but emit anyway for consistency with the filtered array shown.
-        emitPrices(result);
+        emitRows(result);
       }
       return result;
     });

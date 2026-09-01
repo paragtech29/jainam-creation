@@ -116,15 +116,24 @@ export function JobWorkForm({
   };
   const { draft, setDraft, clearDraft } = useJobWorkDraft(draftKey, initialDraft);
 
-  // Description rows only expose an aggregate price array to the parent
-  // (DescriptionRows's onPricesChange), never per-row description-type ids —
-  // that component belongs to 03-04 and is consumed as-is here. So the row
-  // TYPE selections cannot round-trip through the sessionStorage draft; only
-  // the numeric rowPrices (used for the live total/rate) are kept in local
-  // state. This is a deliberate, documented limitation — see SUMMARY.md.
-  const [rowPrices, setRowPrices] = useState<number[]>(
-    jobWork ? jobWork.lines.map((l) => l.priceUsed) : []
+  // DescriptionRows emits the FULL rows (type id + price), so both the live
+  // rate and the sessionStorage draft work from the same source. Restoring a
+  // draft with prices but blank types would leave the owner re-picking the
+  // fiddliest part of the form, which would defeat the point of the draft.
+  const [rows, setRows] = useState<{ descriptionTypeId: string; price: string }[]>(
+    jobWork
+      ? jobWork.lines.map((l) => ({
+          descriptionTypeId: l.descriptionTypeId,
+          price: String(l.priceUsed),
+        }))
+      : initialDraft.rows
   );
+
+  // Only complete, positive integer prices feed the rate — a half-typed row
+  // must not make the total flicker to something wrong.
+  const rowPrices = rows
+    .map((r) => Number(r.price))
+    .filter((n) => Number.isFinite(n) && Number.isInteger(n) && n > 0);
 
   const rateHook = useDerivedRate(rowPrices, jobWork?.rate, initialDraft.rateTouched);
 
@@ -138,18 +147,13 @@ export function JobWorkForm({
     );
   }, [rateHook.rate, rateHook.touched, setDraft]);
 
-  // Mirror rowPrices into the draft too, so a refresh at least preserves the
-  // number of rows and their prices for the live total/rate — DescriptionRows
-  // (03-04, consumed as-is) exposes only this aggregate price array to the
-  // parent, never per-row description-type ids, so the TYPE picked for each
-  // row cannot round-trip through the draft. Documented limitation.
+  // Mirror the full rows into the draft, so a refresh restores both the type
+  // picked on each row and its price.
   useEffect(() => {
-    setDraft((d) => ({
-      ...d,
-      rows: rowPrices.map((p) => ({ descriptionTypeId: "", price: String(p) })),
-    }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rowPrices]);
+    setDraft((d) =>
+      JSON.stringify(d.rows) === JSON.stringify(rows) ? d : { ...d, rows }
+    );
+  }, [rows, setDraft]);
 
   useEffect(() => {
     if (state?.success && state.newId) {
@@ -330,11 +334,15 @@ export function JobWorkForm({
 
           <DescriptionRows
             types={descriptionTypes}
-            initialRows={jobWork?.lines.map((l) => ({
-              descriptionTypeId: l.descriptionTypeId,
-              price: l.priceUsed,
-            }))}
-            onPricesChange={setRowPrices}
+            initialRows={
+              rows.length > 0
+                ? rows.map((r) => ({
+                    descriptionTypeId: r.descriptionTypeId,
+                    price: Number(r.price) || 0,
+                  }))
+                : undefined
+            }
+            onRowsChange={setRows}
             error={state?.fieldErrors?.lines}
           />
 

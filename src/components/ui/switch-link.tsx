@@ -2,7 +2,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 // Shared "Show archived" control for all three register lists (parties,
-// karigars, particulars — plans 02-03/02-04/02-05). State lives in the URL
+// karigars, descriptionTypes — plans 02-03/02-04/02-05). State lives in the URL
 // as a search param, not in React state, so a refresh preserves the view.
 // This also establishes the URL-state pattern Phase 5's job-work filters
 // will reuse. The caller computes `href` (on/off) and owns the routing.

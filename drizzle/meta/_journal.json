@@ -8,6 +8,13 @@
       "when": 1788173651217,
       "tag": "0000_tidy_the_hunter",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788243343448,
+      "tag": "0001_rename_particulars_to_description_types",
+      "breakpoints": true
     }
   ]
 }

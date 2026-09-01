@@ -98,27 +98,34 @@ export const partyKarigars = pgTable(
   ],
 );
 
-// ---------- particulars ----------
-export const particulars = pgTable(
-  "particulars",
+// ---------- descriptionTypes ----------
+// The kinds of work that can appear on a job work's description lines —
+// Galu, Sleeve, Dupatta, Daman, Patti. These are NOT a register the owner
+// maintains; they are added inline while filling a job work form, and exist
+// only to populate that dropdown.
+//
+// Deliberately no price column: the price is typed per job work, because the
+// same work is charged differently to different parties. The figure actually
+// used is snapshotted onto jobWorkDescriptions.priceUsed.
+export const descriptionTypes = pgTable(
+  "description_types",
   {
     id: text("id").primaryKey().$defaultFn(() => createId()),
     userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
 
     name: text("name").notNull(),
-    defaultPrice: integer("default_price").notNull(), // integer rupees — locked decision
     isArchived: boolean("is_archived").notNull().default(false),
 
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [
-    index("particulars_user_id_idx").on(t.userId),
-    uniqueIndex("particulars_user_name_unique").on(t.userId, t.name), // prevent duplicate "galu" per user
+    index("description_types_user_id_idx").on(t.userId),
+    uniqueIndex("description_types_user_name_unique").on(t.userId, t.name),
   ],
 );
 
-export type Particular = typeof particulars.$inferSelect;
-export type NewParticular = typeof particulars.$inferInsert;
+export type DescriptionType = typeof descriptionTypes.$inferSelect;
+export type NewDescriptionType = typeof descriptionTypes.$inferInsert;
 
 // ---------- jobWorks ----------
 export const jobWorkStatusEnum = pgEnum("job_work_status", [
@@ -169,19 +176,23 @@ export const jobWorks = pgTable(
 export type JobWork = typeof jobWorks.$inferSelect;
 export type NewJobWork = typeof jobWorks.$inferInsert;
 
-// ---------- jobWorkParticulars (price-snapshot join) ----------
-export const jobWorkParticulars = pgTable(
-  "job_work_particulars",
+// ---------- jobWorkDescriptions (price-snapshot join) ----------
+// One description line on a job work: which kind of work, and what it was
+// charged at. priceUsed is a SNAPSHOT, written once at save time and never
+// recomputed — renaming or removing a description type must never alter what
+// last year's job works were worth.
+export const jobWorkDescriptions = pgTable(
+  "job_work_descriptions",
   {
     id: text("id").primaryKey().$defaultFn(() => createId()),
     jobWorkId: text("job_work_id").notNull().references(() => jobWorks.id, { onDelete: "cascade" }),
-    particularId: text("particular_id").notNull().references(() => particulars.id),
+    descriptionTypeId: text("description_type_id").notNull().references(() => descriptionTypes.id),
 
-    priceUsed: integer("price_used").notNull(), // SNAPSHOT of particulars.defaultPrice at time of use — never live-joined for totals
+    priceUsed: integer("price_used").notNull(), // integer rupees, snapshotted
   },
   (t) => [
-    index("job_work_particulars_job_work_id_idx").on(t.jobWorkId),
-    index("job_work_particulars_particular_id_idx").on(t.particularId),
+    index("job_work_descriptions_job_work_id_idx").on(t.jobWorkId),
+    index("job_work_descriptions_type_id_idx").on(t.descriptionTypeId),
   ],
 );
 
@@ -189,7 +200,7 @@ export const jobWorkParticulars = pgTable(
 export const usersRelations = relations(users, ({ many }) => ({
   parties: many(parties),
   karigars: many(silaiKarigars),
-  particulars: many(particulars),
+  descriptionTypes: many(descriptionTypes),
   jobWorks: many(jobWorks),
 }));
 
@@ -210,19 +221,22 @@ export const partyKarigarsRelations = relations(partyKarigars, ({ one }) => ({
   karigar: one(silaiKarigars, { fields: [partyKarigars.karigarId], references: [silaiKarigars.id] }),
 }));
 
-export const particularsRelations = relations(particulars, ({ one, many }) => ({
-  user: one(users, { fields: [particulars.userId], references: [users.id] }),
-  jobWorkLines: many(jobWorkParticulars),
+export const descriptionTypesRelations = relations(descriptionTypes, ({ one, many }) => ({
+  user: one(users, { fields: [descriptionTypes.userId], references: [users.id] }),
+  jobWorkLines: many(jobWorkDescriptions),
 }));
 
 export const jobWorksRelations = relations(jobWorks, ({ one, many }) => ({
   user: one(users, { fields: [jobWorks.userId], references: [users.id] }),
   party: one(parties, { fields: [jobWorks.partyId], references: [parties.id] }),
   karigar: one(silaiKarigars, { fields: [jobWorks.karigarId], references: [silaiKarigars.id] }),
-  particulars: many(jobWorkParticulars),
+  descriptions: many(jobWorkDescriptions),
 }));
 
-export const jobWorkParticularsRelations = relations(jobWorkParticulars, ({ one }) => ({
-  jobWork: one(jobWorks, { fields: [jobWorkParticulars.jobWorkId], references: [jobWorks.id] }),
-  particular: one(particulars, { fields: [jobWorkParticulars.particularId], references: [particulars.id] }),
+export const jobWorkDescriptionsRelations = relations(jobWorkDescriptions, ({ one }) => ({
+  jobWork: one(jobWorks, { fields: [jobWorkDescriptions.jobWorkId], references: [jobWorks.id] }),
+  descriptionType: one(descriptionTypes, {
+    fields: [jobWorkDescriptions.descriptionTypeId],
+    references: [descriptionTypes.id],
+  }),
 }));

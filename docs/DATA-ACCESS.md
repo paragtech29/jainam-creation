@@ -28,7 +28,7 @@ passed again.
 ## The Signature Convention
 
 Every repository function that touches business data (parties,
-silaiKarigars, particulars, jobWorks, jobWorkParticulars) takes `userId:
+silaiKarigars, descriptionTypes, jobWorks, jobWorkDescriptions) takes `userId:
 string` as its **mandatory first parameter**. There is no overload without
 it — TypeScript's arity checking is the compile-time enforcement. Every
 query filters on it via `and(eq(table.userId, userId), ...)`.

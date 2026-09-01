@@ -1,18 +1,18 @@
 // Run with: npm run seed:masters -- [username]
 // Idempotent seed of the owner's REAL master data (parties, karigars,
-// particulars, and the party<->karigar links) for verification. Defaults to
+// descriptionTypes, and the party<->karigar links) for verification. Defaults to
 // the "testowner" account. Never deletes or modifies anything, and never
 // touches the users table beyond a read lookup.
 //
 // `parties` and `silai_karigars` have no unique index on name, so
 // `.onConflictDoNothing()` alone would NOT dedupe them across repeated runs
-// — we explicitly select existing rows by name first and skip. `particulars`
+// — we explicitly select existing rows by name first and skip. `descriptionTypes`
 // DOES have a (userId, name) unique index, so onConflictDoNothing suffices
 // there.
 import "dotenv/config";
 import { eq, and, inArray } from "drizzle-orm";
 import { db } from "../src/lib/db/client";
-import { parties, silaiKarigars, particulars, partyKarigars } from "../src/lib/db/schema";
+import { parties, silaiKarigars, descriptionTypes, partyKarigars } from "../src/lib/db/schema";
 import { getUserByUsername } from "../src/lib/db/repositories/users";
 
 const PARTIES = [
@@ -28,12 +28,15 @@ const KARIGARS = [
   { name: "Kamlesh" },
 ];
 
-const PARTICULARS = [
-  { name: "ગળુ", defaultPrice: 162 },
-  { name: "સ્લવ", defaultPrice: 198 },
-  { name: "દુપટ્ટો", defaultPrice: 155 },
-  { name: "દામન", defaultPrice: 120 },
-  { name: "પટ્ટી", defaultPrice: 85 },
+// The kinds of work that appear on a job work's description lines. English,
+// as the owner asked — his book is handwritten in Gujarati but the app is not.
+// No prices here: the price is typed per job work.
+const DESCRIPTION_TYPES = [
+  { name: "Galu" },
+  { name: "Sleeve" },
+  { name: "Dupatta" },
+  { name: "Daman" },
+  { name: "Patti" },
 ];
 
 // party name -> karigar names
@@ -89,17 +92,17 @@ async function main() {
     karigarsCreated++;
   }
 
-  // ---------- particulars (unique index handles dedupe) ----------
-  let particularsCreated = 0;
-  for (const particular of PARTICULARS) {
+  // ---------- description types (unique index handles dedupe) ----------
+  let typesCreated = 0;
+  for (const t of DESCRIPTION_TYPES) {
     const [row] = await db
-      .insert(particulars)
-      .values({ userId, ...particular })
-      .onConflictDoNothing({ target: [particulars.userId, particulars.name] })
-      .returning({ id: particulars.id });
-    if (row) particularsCreated++;
+      .insert(descriptionTypes)
+      .values({ userId, ...t })
+      .onConflictDoNothing({ target: [descriptionTypes.userId, descriptionTypes.name] })
+      .returning({ id: descriptionTypes.id });
+    if (row) typesCreated++;
   }
-  const particularsSkipped = PARTICULARS.length - particularsCreated;
+  const typesSkipped = DESCRIPTION_TYPES.length - typesCreated;
 
   // ---------- party <-> karigar links ----------
   const allParties = await db
@@ -135,7 +138,7 @@ async function main() {
   console.log(`Seed summary for user "${username}" (id: ${userId}):`);
   console.log(`  Parties:     ${partiesCreated} created, ${partiesSkipped} skipped`);
   console.log(`  Karigars:    ${karigarsCreated} created, ${karigarsSkipped} skipped`);
-  console.log(`  Particulars: ${particularsCreated} created, ${particularsSkipped} skipped`);
+  console.log(`  Description types: ${typesCreated} created, ${typesSkipped} skipped`);
   console.log(`  Links:       ${linksCreated} created, ${linksSkipped} skipped`);
 
   process.exit(0);

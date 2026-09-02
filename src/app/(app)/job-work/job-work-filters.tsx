@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { SearchInput } from "@/components/search-input";
+import { SimpleSelect } from "@/components/ui/simple-select";
 
 /**
  * The filter panel from the owner's redesign: date range, party, karigar and
@@ -77,41 +78,59 @@ export function JobWorkFilters({
 
         <label className="flex flex-col gap-1.5">
           <span className={label}>Party name</span>
-          <select value={get("party")} onChange={(e) => set("party", e.target.value)} className={field}>
-            <option value="">All parties</option>
-            {parties.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
+          <SimpleSelect
+            value={get("party") || "all"}
+            onValueChange={(v) => set("party", v === "all" ? "" : v)}
+            ariaLabel="Filter by party"
+            fullWidth
+            className="h-10"
+            options={[{ value: "all", label: "All parties" }, ...parties.map((p) => ({ value: p.id, label: p.name }))]}
+          />
         </label>
 
         <label className="flex flex-col gap-1.5">
           <span className={label}>Silai karigar name</span>
-          <select value={get("karigar")} onChange={(e) => set("karigar", e.target.value)} className={field}>
-            <option value="">All karigars</option>
-            {karigars.map((k) => (
-              <option key={k.id} value={k.id}>{k.name}</option>
-            ))}
-          </select>
+          <SimpleSelect
+            value={get("karigar") || "all"}
+            onValueChange={(v) => set("karigar", v === "all" ? "" : v)}
+            ariaLabel="Filter by silai karigar"
+            fullWidth
+            className="h-10"
+            options={[{ value: "all", label: "All karigars" }, ...karigars.map((k) => ({ value: k.id, label: k.name }))]}
+          />
         </label>
 
         <label className="flex flex-col gap-1.5">
           <span className={label}>Status</span>
-          <select value={get("status")} onChange={(e) => set("status", e.target.value)} className={field}>
-            <option value="">Any status</option>
-            <option value="PENDING">Pending</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="COMPLETED">Completed</option>
-          </select>
+          <SimpleSelect
+            value={get("status") || "any"}
+            onValueChange={(v) => set("status", v === "any" ? "" : v)}
+            ariaLabel="Filter by job work status"
+            fullWidth
+            className="h-10"
+            options={[
+              { value: "any", label: "Any status" },
+              { value: "PENDING", label: "Pending" },
+              { value: "IN_PROGRESS", label: "In Progress" },
+              { value: "COMPLETED", label: "Completed" },
+            ]}
+          />
         </label>
 
         <label className="flex flex-col gap-1.5">
           <span className={label}>Bill status</span>
-          <select value={get("billed")} onChange={(e) => set("billed", e.target.value)} className={field}>
-            <option value="">Any</option>
-            <option value="yes">Billed</option>
-            <option value="no">Not billed</option>
-          </select>
+          <SimpleSelect
+            value={get("billed") || "any"}
+            onValueChange={(v) => set("billed", v === "any" ? "" : v)}
+            ariaLabel="Filter by bill status"
+            fullWidth
+            className="h-10"
+            options={[
+              { value: "any", label: "Any" },
+              { value: "yes", label: "Billed" },
+              { value: "no", label: "Not billed" },
+            ]}
+          />
         </label>
       </div>
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { SimpleSelect } from "@/components/ui/simple-select";
 
 /**
  * Active / Archived / All, in the URL. Defaults to Active — the archived
@@ -25,16 +26,16 @@ export function ArchivedFilter() {
   return (
     <label className="flex items-center gap-2">
       <span className="text-[12.5px] text-secondary-foreground">Show</span>
-      <select
+      <SimpleSelect
         value={current}
-        onChange={(e) => change(e.target.value)}
-        aria-label="Filter by archived state"
-        className="h-[42px] min-w-[130px] rounded-[10px] border border-input bg-card px-2.5 text-[13.5px] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <option value="active">Active</option>
-        <option value="archived">Archived</option>
-        <option value="all">All</option>
-      </select>
+        onValueChange={change}
+        ariaLabel="Filter by archived state"
+        options={[
+          { value: "active", label: "Active" },
+          { value: "archived", label: "Archived" },
+          { value: "all", label: "All" },
+        ]}
+      />
     </label>
   );
 }

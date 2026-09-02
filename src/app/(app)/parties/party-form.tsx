@@ -1,11 +1,12 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SimpleSelect } from "@/components/ui/simple-select";
 import {
   Field,
   FieldContent,
@@ -32,6 +33,9 @@ function SubmitButton({ label }: { label: string }) {
 
 export function PartyForm({ party }: { party?: Party }) {
   const router = useRouter();
+  // Radix Select cannot hold "" as a value, so "not specified" travels as a
+  // sentinel. The server action maps it back to null — see partySchema.
+  const [gender, setGender] = useState(party?.gender ?? "unspecified");
   const action = party ? updatePartyAction.bind(null, party.id) : createPartyAction;
   const [state, formAction] = useActionState<PartyFormState, FormData>(action, undefined);
 
@@ -101,17 +105,19 @@ export function PartyForm({ party }: { party?: Party }) {
         </Field>
         <Field>
           <FieldLabel htmlFor="gender">Gender</FieldLabel>
-          <select
+          <SimpleSelect
             id="gender"
             name="gender"
-            defaultValue={party?.gender ?? ""}
-            className="h-11 rounded-md border border-border bg-background px-3 text-base"
-          >
-            <option value="">Not specified</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="other">Other</option>
-          </select>
+            value={gender}
+            onValueChange={setGender}
+            fullWidth
+            options={[
+              { value: "unspecified", label: "Not specified" },
+              { value: "male", label: "Male" },
+              { value: "female", label: "Female" },
+              { value: "other", label: "Other" },
+            ]}
+          />
         </Field>
         <Field>
           <FieldLabel htmlFor="email">Email</FieldLabel>

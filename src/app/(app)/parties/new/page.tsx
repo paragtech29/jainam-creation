@@ -15,7 +15,7 @@ export default function NewPartyPage() {
         </Link>
       </div>
 
-      <div className="rounded-lg border border-border bg-card p-5 shadow-card sm:p-6">
+      <div className="overflow-hidden rounded-[14px] border border-border bg-card shadow-card">
         <PartyForm />
       </div>
     </div>

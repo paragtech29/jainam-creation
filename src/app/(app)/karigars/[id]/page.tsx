@@ -48,7 +48,7 @@ export default async function KarigarDetailPage({
         </p>
       </div>
 
-      <div className="rounded-lg border border-border bg-card p-5 shadow-card sm:p-6">
+      <div className="overflow-hidden rounded-[14px] border border-border bg-card shadow-card">
         <KarigarForm
           karigar={karigar}
           parties={allParties.map((p) => ({ id: p.id, name: p.name }))}

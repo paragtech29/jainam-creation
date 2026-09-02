@@ -20,7 +20,7 @@ export default async function NewKarigarPage() {
         </Link>
       </div>
 
-      <div className="rounded-lg border border-border bg-card p-5 shadow-card sm:p-6">
+      <div className="overflow-hidden rounded-[14px] border border-border bg-card shadow-card">
         <KarigarForm parties={parties.map((p) => ({ id: p.id, name: p.name }))} />
       </div>
     </div>

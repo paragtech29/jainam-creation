@@ -53,9 +53,10 @@ export function RecordDialog({
           ) : null}
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-5 sm:p-6">
-          {children}
-        </div>
+        {/* No padding and no scrolling here — the form owns both, so its
+            action bar can sit OUTSIDE the scrolling region rather than
+            floating over it. */}
+        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
       </DialogContent>
     </Dialog>
   );

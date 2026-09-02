@@ -48,7 +48,7 @@ export default async function PartyDetailPage({
           record actions are reference material beside it. On a phone this
           collapses to one column in the same order. */}
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div className="rounded-lg border border-border bg-card p-5 shadow-card sm:p-6">
+        <div className="overflow-hidden rounded-[14px] border border-border bg-card shadow-card">
           <PartyForm party={party} />
         </div>
 
@@ -56,7 +56,7 @@ export default async function PartyDetailPage({
       {/* Read-only here by design. Linking is managed on the karigar, so there
           is exactly one place to change it and no chance of two screens
           disagreeing about who works for whom. */}
-      <div className="rounded-lg border border-border bg-card p-5 shadow-card sm:p-6">
+      <div className="overflow-hidden rounded-[14px] border border-border bg-card shadow-card">
         <h2 className="font-heading text-base font-semibold">Silai karigars</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           These karigars will be offered when you record a job work for {party.name}.

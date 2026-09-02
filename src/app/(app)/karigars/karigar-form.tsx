@@ -13,7 +13,6 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
-  FieldLegend,
   FieldSet,
 } from "@/components/ui/field";
 import {
@@ -58,10 +57,13 @@ export function KarigarForm({
   }, [state?.success, state?.newId, router]);
 
   return (
-    <form action={formAction} className="flex flex-col gap-6">
+    <form action={formAction} className="flex min-h-0 flex-1 flex-col">
+      {/* The fields scroll; the action bar below is a SIBLING, not an overlay.
+          Sticky-inside-the-scroller left the scrollbar running behind the
+          footer, which looked broken. */}
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-5 sm:p-6">
       <FieldGroup>
         <FieldSet>
-          <FieldLegend variant="label">Karigar</FieldLegend>
           <div className="grid gap-x-4 gap-y-4 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
           <Field>
             <FieldLabel htmlFor="name">Name</FieldLabel>
@@ -78,7 +80,6 @@ export function KarigarForm({
         </FieldSet>
 
         <FieldSet>
-          <FieldLegend variant="label">Contact</FieldLegend>
           <div className="grid gap-x-4 gap-y-4 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
           <Field>
             <FieldLabel htmlFor="address">Address</FieldLabel>
@@ -118,7 +119,6 @@ export function KarigarForm({
         </FieldSet>
 
         <FieldSet>
-          <FieldLegend variant="label">Parties this karigar works for</FieldLegend>
           <div className="grid gap-x-4 gap-y-2">
           {parties && parties.length > 0 ? (
             <>
@@ -144,14 +144,16 @@ export function KarigarForm({
         </FieldSet>
       </FieldGroup>
 
+      </div>
+
       {state?.error ? (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="shrink-0 px-5 pb-3 text-sm text-destructive sm:px-6">
           {state.error}
         </p>
       ) : null}
 
       {state?.duplicateWarning ? (
-        <div className="flex flex-col gap-3 rounded-lg border border-warning/30 bg-warning/10 p-3">
+        <div className="m-5 flex shrink-0 flex-col gap-3 rounded-lg border border-warning/30 bg-warning/10 p-3 sm:m-6">
           <p className="text-sm text-warning-foreground">{state.duplicateWarning}</p>
           <input type="hidden" name="confirmDuplicate" value="true" />
           <div className="flex gap-2">
@@ -162,7 +164,7 @@ export function KarigarForm({
           </div>
         </div>
       ) : (
-        <div className="sticky bottom-[-1.25rem] z-10 -mx-5 -mb-5 flex items-center justify-end gap-2.5 border-t border-border bg-muted px-5 py-3.5 sm:bottom-[-1.5rem] sm:-mx-6 sm:-mb-6 sm:px-6">
+        <div className="flex shrink-0 items-center justify-end gap-2.5 border-t border-border bg-muted/40 px-5 py-3.5 sm:px-6">
           <Button asChild variant="outline" className="h-10 px-4">
             <Link href="/karigars">Cancel</Link>
           </Button>

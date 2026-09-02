@@ -29,6 +29,7 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -37,8 +38,8 @@ import { createDescriptionTypeInlineAction } from "./actions";
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} className="h-11 text-base">
-      {pending ? "Adding..." : "Add type"}
+    <Button type="submit" disabled={pending} className="h-10 px-5">
+      {pending ? "Adding…" : "Add type"}
     </Button>
   );
 }
@@ -60,28 +61,42 @@ export function InlineDescriptionTypeForm({
   }, [state?.descriptionType]);
 
   return (
+    // Same shell as the Add party / Add karigar dialogs: bordered header,
+    // padded body, right-aligned action bar against a tinted footer. It was
+    // previously a nested bordered card with left-aligned buttons, which
+    // matched nothing else in the app.
     <Dialog open onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add a new type of work</DialogTitle>
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[460px]">
+        <DialogHeader className="shrink-0 border-b border-border px-5 py-4 text-left sm:px-6">
+          <DialogTitle className="text-base font-semibold tracking-tight">
+            Add a new type of work
+          </DialogTitle>
+          <DialogDescription className="text-[12.5px]">
+            It becomes available on every job work from now on.
+          </DialogDescription>
         </DialogHeader>
-        <form action={formAction} className="flex flex-col gap-3 rounded-lg border border-border bg-card p-3">
-          <Field>
-            <FieldLabel htmlFor="inline-description-type-name">Type name</FieldLabel>
-            <Input
-              id="inline-description-type-name"
-              name="name"
-              autoFocus
-              required
-              className="h-11 text-base"
-            />
-            <FieldError errors={[{ message: state?.error }]} />
-          </Field>
-          <div className="flex gap-2">
-            <SubmitButton />
-            <Button type="button" variant="outline" onClick={onCancel} className="h-11 text-base">
+
+        <form action={formAction} className="flex flex-col">
+          <div className="p-5 sm:p-6">
+            <Field>
+              <FieldLabel htmlFor="inline-description-type-name">Type name</FieldLabel>
+              <Input
+                id="inline-description-type-name"
+                name="name"
+                autoFocus
+                required
+                placeholder="e.g. Galu"
+                className="h-[42px]"
+              />
+              <FieldError errors={[{ message: state?.error }]} />
+            </Field>
+          </div>
+
+          <div className="flex shrink-0 items-center justify-end gap-2.5 border-t border-border bg-muted/40 px-5 py-3.5 sm:px-6">
+            <Button type="button" variant="outline" onClick={onCancel} className="h-10 px-4">
               Cancel
             </Button>
+            <SubmitButton />
           </div>
         </form>
       </DialogContent>

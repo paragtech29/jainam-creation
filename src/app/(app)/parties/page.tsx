@@ -6,6 +6,8 @@ import { ArchivedFilter } from "@/components/status-filter";
 import { Pagination } from "@/components/pagination";
 import { EmptyState } from "@/components/empty-state";
 import { PartyList } from "./party-list";
+import { RecordDialog } from "@/components/record-dialog";
+import { PartyForm } from "./party-form";
 
 const PAGE_SIZE = 20;
 
@@ -13,6 +15,7 @@ export default async function PartiesPage({
   searchParams,
 }: {
   searchParams: Promise<{
+    new?: string;
     archived?: string;
     highlight?: string;
     q?: string;
@@ -39,6 +42,15 @@ export default async function PartiesPage({
 
   return (
     <div className="space-y-5">
+      {sp.new === "1" ? (
+        <RecordDialog
+          title="Add party"
+          description="Only the party name and first owner name are required."
+        >
+          <PartyForm />
+        </RecordDialog>
+      ) : null}
+
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <SearchInput placeholder="Search party or owner name" />
@@ -62,7 +74,7 @@ export default async function PartiesPage({
             title="No parties yet"
             description="Add the businesses who give you work. You'll pick one every time you record a job work."
             actionLabel="Add your first party"
-            actionHref="/parties/new"
+            actionHref="/parties?new=1"
           />
         )
       ) : (

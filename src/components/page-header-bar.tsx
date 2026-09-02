@@ -12,12 +12,12 @@ function metaFor(pathname: string): Meta {
   if (pathname.startsWith("/parties/new")) return { title: "Add party", sub: "A business that gives you work" };
   if (pathname.startsWith("/parties/")) return { title: "Party", sub: "Details and linked karigars" };
   if (pathname === "/parties")
-    return { title: "Parties", sub: "The businesses who give you work", action: { label: "Add party", href: "/parties/new" } };
+    return { title: "Parties", sub: "The businesses who give you work", action: { label: "Add party", href: "/parties?new=1" } };
 
   if (pathname.startsWith("/karigars/new")) return { title: "Add karigar", sub: "A silai karigar you collect maal from" };
   if (pathname.startsWith("/karigars/")) return { title: "Silai Karigar", sub: "Details and the parties they work for" };
   if (pathname === "/karigars")
-    return { title: "Silai Karigar", sub: "The karigars you collect maal from", action: { label: "Add karigar", href: "/karigars/new" } };
+    return { title: "Silai Karigar", sub: "The karigars you collect maal from", action: { label: "Add karigar", href: "/karigars?new=1" } };
 
   if (pathname.startsWith("/job-work/new")) return { title: "Record job work", sub: "Party, karigar, description and pieces" };
   if (pathname.startsWith("/job-work/")) return { title: "Job work", sub: "Edit this chalan" };

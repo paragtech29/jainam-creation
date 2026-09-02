@@ -119,7 +119,7 @@ export function KarigarForm({
 
         <FieldSet>
           <FieldLegend variant="label">Parties this karigar works for</FieldLegend>
-          <div className="grid gap-x-4 gap-y-4 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
+          <div className="grid gap-x-4 gap-y-2">
           {parties && parties.length > 0 ? (
             <>
               <MultiSelect
@@ -130,7 +130,7 @@ export function KarigarForm({
                 searchPlaceholder="Search parties"
                 emptyText="No party found."
               />
-              <FieldDescription>
+              <FieldDescription className="sm:col-span-full">
                 Only these parties will offer this karigar when you record a job
                 work. Existing job works are never affected by changing this.
               </FieldDescription>
@@ -162,10 +162,15 @@ export function KarigarForm({
           </div>
         </div>
       ) : (
-        <SubmitButton
-          label={isEdit ? "Save changes" : "Add karigar"}
-          pendingLabel={isEdit ? "Saving..." : "Adding..."}
-        />
+        <div className="-mx-5 -mb-5 flex items-center justify-end gap-2.5 border-t border-border bg-muted/40 px-5 py-3.5 sm:-mx-6 sm:-mb-6 sm:px-6">
+          <Button asChild variant="outline" className="h-10 px-4">
+            <Link href="/karigars">Cancel</Link>
+          </Button>
+          <SubmitButton
+            label={isEdit ? "Save changes" : "Add karigar"}
+            pendingLabel="Saving…"
+          />
+        </div>
       )}
     </form>
   );

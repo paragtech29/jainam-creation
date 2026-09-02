@@ -14,6 +14,8 @@ import { useActionState, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useFormStatus } from "react-dom";
+import { Lock } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -43,10 +45,12 @@ import { useJobWorkDraft, type JobWorkDraft } from "./use-job-work-draft";
 
 type JobWorkStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED";
 
-const STATUS_OPTIONS: { value: JobWorkStatus; label: string }[] = [
-  { value: "PENDING", label: "Pending" },
-  { value: "IN_PROGRESS", label: "In Progress" },
-  { value: "COMPLETED", label: "Completed" },
+// The four status colours were defined back in Phase 2 precisely so these
+// states stay tellable apart at a glance — this screen is where they earn it.
+const STATUS_OPTIONS: { value: JobWorkStatus; label: string; dot: string }[] = [
+  { value: "PENDING", label: "Pending", dot: "bg-status-pending" },
+  { value: "IN_PROGRESS", label: "In Progress", dot: "bg-status-progress" },
+  { value: "COMPLETED", label: "Completed", dot: "bg-status-completed" },
 ];
 
 function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
@@ -228,7 +232,7 @@ export function JobWorkForm({
               required
               value={draft.date}
               onChange={(e) => setDraft((d) => ({ ...d, date: e.target.value }))}
-              className="h-11 text-base tnum"
+              className="h-[42px] font-mono tabular-nums"
             />
             <FieldError errors={[{ message: state?.fieldErrors?.date }]} />
           </Field>
@@ -507,7 +511,10 @@ export function JobWorkForm({
               <SelectContent>
                 {STATUS_OPTIONS.map((o) => (
                   <SelectItem key={o.value} value={o.value}>
-                    {o.label}
+                    <span className="flex items-center gap-2">
+                      <span className={`size-2 rounded-full ${o.dot}`} aria-hidden="true" />
+                      {o.label}
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -517,13 +524,31 @@ export function JobWorkForm({
 
           <Field>
             <FieldLabel htmlFor="isBilled">Is Billed</FieldLabel>
-            <div className="flex min-h-[42px] items-center justify-between gap-3 rounded-[10px] border border-input bg-card px-3">
-              <span className="text-sm text-muted-foreground">
-                {draft.status !== "COMPLETED"
-                  ? "Available once the status is Completed"
+            {/* Deliberately NOT shaped like the Select beside it. Matching the
+                input border made this read as a text field you could type in,
+                when it is a toggle. */}
+            <label
+              htmlFor="isBilled"
+              className={cn(
+                "flex min-h-[42px] items-center justify-between gap-3 rounded-[10px] px-3 py-2 transition-colors",
+                draft.status !== "COMPLETED"
+                  ? "cursor-not-allowed bg-muted"
                   : draft.isBilled
-                    ? "Bill has been made"
-                    : "Not billed yet"}
+                    ? "cursor-pointer bg-status-billed-bg"
+                    : "cursor-pointer bg-accent/60 hover:bg-accent"
+              )}
+            >
+              <span className="flex items-center gap-2 text-sm">
+                {draft.status !== "COMPLETED" ? (
+                  <>
+                    <Lock size={14} className="text-muted-foreground" aria-hidden="true" />
+                    <span className="text-muted-foreground">Mark Completed first</span>
+                  </>
+                ) : draft.isBilled ? (
+                  <span className="font-medium text-status-billed">Bill has been made</span>
+                ) : (
+                  <span className="text-secondary-foreground">Not billed yet</span>
+                )}
               </span>
               <Switch
                 id="isBilled"
@@ -532,7 +557,7 @@ export function JobWorkForm({
                 disabled={draft.status !== "COMPLETED"}
                 onCheckedChange={(checked) => setDraft((d) => ({ ...d, isBilled: checked }))}
               />
-            </div>
+            </label>
           </Field>
           </div>
 

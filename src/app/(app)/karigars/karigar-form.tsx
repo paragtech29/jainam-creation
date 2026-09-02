@@ -162,7 +162,7 @@ export function KarigarForm({
           </div>
         </div>
       ) : (
-        <div className="-mx-5 -mb-5 flex items-center justify-end gap-2.5 border-t border-border bg-muted/40 px-5 py-3.5 sm:-mx-6 sm:-mb-6 sm:px-6">
+        <div className="sticky bottom-[-1.25rem] z-10 -mx-5 -mb-5 flex items-center justify-end gap-2.5 border-t border-border bg-muted px-5 py-3.5 sm:bottom-[-1.5rem] sm:-mx-6 sm:-mb-6 sm:px-6">
           <Button asChild variant="outline" className="h-10 px-4">
             <Link href="/karigars">Cancel</Link>
           </Button>

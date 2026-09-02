@@ -27,6 +27,7 @@
 import { createId } from "@paralleldrive/cuid2";
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -110,6 +111,16 @@ export function DescriptionRows({
     .map((r) => Number(r.price))
     .filter((n) => Number.isFinite(n) && Number.isInteger(n) && n > 0)
     .reduce((a, b) => a + b, 0);
+
+  // A row counts as finished when it has BOTH a type and a positive whole
+  // price. Adding another row before that is how you end up with a stack of
+  // half-filled lines and a rate that silently ignores them.
+  const rowIsComplete = (r: Row) => {
+    const n = Number(r.price);
+    return r.descriptionTypeId !== "" && Number.isInteger(n) && n > 0;
+  };
+  const incompleteCount = rows.filter((r) => !rowIsComplete(r)).length;
+  const canAddRow = incompleteCount === 0;
 
   return (
     <div className="flex flex-col gap-2">
@@ -205,15 +216,31 @@ export function DescriptionRows({
         <button
           type="button"
           onClick={addRow}
-          className="flex w-full items-center justify-center gap-1.5 border-t border-dashed border-border bg-card py-2.5 text-[13px] font-medium text-primary transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          disabled={!canAddRow}
+          aria-describedby={canAddRow ? undefined : "add-row-blocked"}
+          className={cn(
+            "flex w-full items-center justify-center gap-1.5 border-t border-dashed border-border py-2.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            canAddRow
+              ? "bg-card text-primary hover:bg-accent/50"
+              : "cursor-not-allowed bg-muted/50 text-muted-foreground"
+          )}
         >
-          <Plus size={15} aria-hidden="true" /> Add row
+          <Plus size={15} aria-hidden="true" />
+          {canAddRow ? "Add row" : "Fill in this row first"}
         </button>
       </div>
 
-      <div className="flex items-baseline justify-between px-1">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 px-1">
         <span className="text-xs text-muted-foreground">
           {rows.length} {rows.length === 1 ? "row" : "rows"}
+          {canAddRow ? null : (
+            <>
+              {" · "}
+              <span id="add-row-blocked" className="text-status-pending">
+                needs a type and a price
+              </span>
+            </>
+          )}
         </span>
         <span className="text-xs text-muted-foreground">
           Rows add up to{" "}

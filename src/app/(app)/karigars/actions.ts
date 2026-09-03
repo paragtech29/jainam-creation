@@ -35,7 +35,6 @@ export async function createKarigarAction(
   if (!parsed.success) {
     const flattened = parsed.error.flatten().fieldErrors;
     return {
-      error: "Please check the fields and try again.",
       fieldErrors: {
         name: flattened.name?.[0],
         address: flattened.address?.[0],
@@ -89,7 +88,6 @@ export async function updateKarigarAction(
   if (!parsed.success) {
     const flattened = parsed.error.flatten().fieldErrors;
     return {
-      error: "Please check the fields and try again.",
       fieldErrors: {
         name: flattened.name?.[0],
         address: flattened.address?.[0],

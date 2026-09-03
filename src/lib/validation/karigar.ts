@@ -11,8 +11,8 @@ export const karigarSchema = z.object({
   // parties, not on karigars — he may well take maal from someone whose
   // number he does not have yet. The FORMAT is still enforced when a value
   // is given, which was the actual bug: a contact accepted letters.
-  contact1: optionalPhone("Contact 1"),
-  contact2: optionalPhone("Contact 2"),
+  contact1: optionalPhone("Mobile number"),
+  contact2: optionalPhone("Alternate number"),
 
   address: optionalText("Address"),
 

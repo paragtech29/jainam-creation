@@ -29,18 +29,18 @@ export const descriptionLineSchema = z.object({
 });
 
 export const jobWorkSchema = z.object({
-  date: z.string().min(1, "Date is required"),
-  partyId: z.string().min(1, "Choose a party"),
-  karigarId: z.string().min(1, "Silai karigar is required"),
+  date: z.string().min(1, "Please choose a date"),
+  partyId: z.string().min(1, "Please choose a party"),
+  karigarId: z.string().min(1, "Please choose a silai karigar"),
   pieces: z
     .string()
     .trim()
-    .min(1, "Pieces is required")
+    .min(1, "Please enter the number of pieces")
     .pipe(z.coerce.number<string>().int().positive("Pieces must be more than 0")),
   rate: z
     .string()
     .trim()
-    .min(1, "Rate is required")
+    .min(1, "Please enter a rate")
     .pipe(z.coerce.number<string>().int("Whole rupees only").positive("Rate must be more than 0")),
   chalanNo: digitsOnly.optional().or(z.literal("")),
   partyDesignNo: digitsOnly.optional().or(z.literal("")),
@@ -48,7 +48,7 @@ export const jobWorkSchema = z.object({
   comment: z.string().trim().optional().or(z.literal("")),
   status: z.enum(["PENDING", "IN_PROGRESS", "COMPLETED"]),
   isBilled: z.coerce.boolean().optional(),
-  lines: z.array(descriptionLineSchema).min(1, "Add at least one description line"),
+  lines: z.array(descriptionLineSchema).min(1, "Please add at least one description line"),
 });
 
 export type JobWorkInput = z.infer<typeof jobWorkSchema>;

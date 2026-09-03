@@ -69,7 +69,6 @@ export async function createJobWorkAction(
   if (!parsed.success) {
     const flattened = parsed.error.flatten().fieldErrors;
     return {
-      error: "Please check the fields and try again.",
       fieldErrors: {
         date: flattened.date?.[0],
         partyId: flattened.partyId?.[0],
@@ -145,7 +144,6 @@ export async function updateJobWorkAction(
   if (!parsed.success) {
     const flattened = parsed.error.flatten().fieldErrors;
     return {
-      error: "Please check the fields and try again.",
       fieldErrors: {
         date: flattened.date?.[0],
         partyId: flattened.partyId?.[0],

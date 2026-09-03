@@ -67,10 +67,11 @@ export function KarigarForm({
         <FieldSet>
           <div className="grid gap-x-4 gap-y-4 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
           <Field>
-            <FieldLabel htmlFor="name">Name <Req /></FieldLabel>
+            <FieldLabel htmlFor="name">Karigar name <Req /></FieldLabel>
             <Input
               id="name"
               name="name"
+              placeholder="Karigar's full name"
               defaultValue={karigar?.name}
               required
               minLength={2}
@@ -101,11 +102,12 @@ export function KarigarForm({
           </Field>
           <Field>
             <FieldLabel htmlFor="contact1">
-              Contact 1
+              Mobile number
             </FieldLabel>
             <Input
               id="contact1"
               name="contact1"
+              placeholder="98765 43210"
               type="tel"
               inputMode="tel"
               pattern="[0-9+() -]{10,20}"
@@ -118,11 +120,12 @@ export function KarigarForm({
           </Field>
           <Field>
             <FieldLabel htmlFor="contact2">
-              Contact 2
+              Alternate number
             </FieldLabel>
             <Input
               id="contact2"
               name="contact2"
+              placeholder="Another number, if any"
               type="tel"
               inputMode="tel"
               pattern="[0-9+() -]{10,20}"

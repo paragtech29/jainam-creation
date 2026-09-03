@@ -2,13 +2,24 @@
 // cannot drift apart on what counts as a valid name or phone number.
 //
 // These are the AUTHORITATIVE rules. The forms also carry HTML attributes
-// (required, pattern, inputMode, maxLength) so the browser blocks an obvious
-// mistake before a round trip — but those are a convenience. Anything that
-// reaches a Server Action is re-checked here, because HTML attributes are
-// trivially bypassed and a Server Action is a public endpoint.
+// (required, pattern, inputMode, maxLength) as documentation of intent, but
+// they no longer validate: the forms are noValidate so that errors appear as
+// red text under the field instead of in a browser bubble. Everything that
+// reaches a Server Action is checked here, because a Server Action is a
+// public endpoint and HTML attributes are trivially bypassed.
+//
+// Each rule reports exactly ONE message, and checks "did you fill it in?"
+// before anything else. A blank field gets "Please enter owner name" —
+// telling someone their empty box "must be at least 2 characters" answers a
+// question they did not ask.
 import { z } from "zod";
 
 const LETTER = /\p{L}/u;
+
+/** "Mobile number" -> "Please enter mobile number" */
+function pleaseEnter(label: string) {
+  return `Please enter ${label.charAt(0).toLowerCase()}${label.slice(1)}`;
+}
 
 /**
  * A business or trading name. Digits are allowed — "3 Star Creation" is a
@@ -19,9 +30,13 @@ export function businessName(label: string) {
   return z
     .string()
     .trim()
-    .min(2, `${label} must be at least 2 characters`)
-    .max(120, `${label} is too long`)
-    .refine((v) => LETTER.test(v), { message: `${label} must contain letters, not just numbers` });
+    .superRefine((v, ctx) => {
+      const fail = (message: string) => ctx.addIssue({ code: "custom", message });
+      if (v.length === 0) return fail(pleaseEnter(label));
+      if (!LETTER.test(v)) return fail(`${label} must contain letters, not just numbers`);
+      if (v.length < 2) return fail(`${label} is too short`);
+      if (v.length > 120) return fail(`${label} is too long`);
+    });
 }
 
 /**
@@ -33,33 +48,35 @@ export function personName(label: string) {
   return z
     .string()
     .trim()
-    .min(2, `${label} must be at least 2 characters`)
-    .max(80, `${label} is too long`)
-    .refine((v) => LETTER.test(v), { message: `${label} must contain letters` })
-    .refine((v) => !/[0-9]/.test(v), { message: `${label} cannot contain numbers` })
-    .refine((v) => /^[\p{L}\p{M}\s.'-]+$/u.test(v), {
-      message: `${label} can only use letters, spaces, dots, hyphens and apostrophes`,
+    .superRefine((v, ctx) => {
+      const fail = (message: string) => ctx.addIssue({ code: "custom", message });
+      if (v.length === 0) return fail(pleaseEnter(label));
+      if (/[0-9]/.test(v)) return fail(`${label} cannot contain numbers`);
+      if (!LETTER.test(v)) return fail(`${label} must contain letters`);
+      if (!/^[\p{L}\p{M}\s.'-]+$/u.test(v)) return fail(`${label} can only use letters, spaces, dots, hyphens and apostrophes`);
+      if (v.length < 2) return fail(`${label} is too short`);
+      if (v.length > 80) return fail(`${label} is too long`);
     });
 }
 
 /**
  * A phone number. Accepts the punctuation people actually type — spaces,
  * +, -, brackets — then counts the digits. 10 to 15 covers an Indian mobile,
- * a landline with STD code, and a +91-prefixed number. Letters are rejected
- * outright, which was the reported bug: a contact number would accept "abc".
+ * a landline with STD code, and a +91-prefixed number.
  */
 export function phone(label: string) {
   return z
     .string()
     .trim()
-    .refine((v) => !LETTER.test(v), { message: `${label} cannot contain letters` })
-    .refine((v) => /^[0-9+\-\s()]+$/.test(v), {
-      message: `${label} can only use numbers, spaces, + - and brackets`,
-    })
-    .refine((v) => {
+    .superRefine((v, ctx) => {
+      const fail = (message: string) => ctx.addIssue({ code: "custom", message });
+      if (v.length === 0) return fail(pleaseEnter(label));
+      if (LETTER.test(v)) return fail(`${label} cannot contain letters`);
+      if (!/^[0-9+\-\s()]+$/.test(v)) return fail(`${label} can only use numbers, spaces, + - and brackets`);
       const digits = v.replace(/\D/g, "");
-      return digits.length >= 10 && digits.length <= 15;
-    }, { message: `${label} must be 10 to 15 digits` });
+      if (digits.length < 10) return fail(`${label} needs at least 10 digits`);
+      if (digits.length > 15) return fail(`${label} has too many digits`);
+    });
 }
 
 /** Same rules, but an empty value is fine. */

@@ -36,7 +36,6 @@ export async function createPartyAction(
   if (!parsed.success) {
     const flattened = parsed.error.flatten().fieldErrors;
     return {
-      error: "Please check the fields and try again.",
       fieldErrors: {
         name: flattened.name?.[0],
         ownerName1: flattened.ownerName1?.[0],
@@ -89,7 +88,6 @@ export async function updatePartyAction(
   if (!parsed.success) {
     const flattened = parsed.error.flatten().fieldErrors;
     return {
-      error: "Please check the fields and try again.",
       fieldErrors: {
         name: flattened.name?.[0],
         ownerName1: flattened.ownerName1?.[0],

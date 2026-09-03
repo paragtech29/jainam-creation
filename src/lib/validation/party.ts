@@ -16,18 +16,18 @@ export const partySchema = z.object({
   name: businessName("Party name"),
 
   // A person's name — no digits.
-  ownerName1: personName("Owner name 1"),
-  ownerName2: optionalPersonName("Owner name 2"),
+  ownerName1: personName("Owner name"),
+  ownerName2: optionalPersonName("Co-owner name"),
 
   // Required, per the owner: a party you cannot ring is not much use.
-  contact1: phone("Contact 1"),
-  contact2: optionalPhone("Contact 2"),
+  contact1: phone("Mobile number"),
+  contact2: optionalPhone("Alternate number"),
 
   // Required. "unspecified" is the sentinel the Radix Select sends for no
   // answer — it is deliberately NOT accepted here, which is what makes the
   // field mandatory.
   gender: z.enum(["male", "female", "other"], {
-    message: "Choose a gender",
+    message: "Please choose a gender",
   }),
 
   address: optionalText("Address"),

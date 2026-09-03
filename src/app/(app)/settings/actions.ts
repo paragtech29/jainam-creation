@@ -25,7 +25,6 @@ export async function changePasswordAction(
   if (!parsed.success) {
     const flattened = parsed.error.flatten().fieldErrors;
     return {
-      error: "Please check the fields and try again.",
       fieldErrors: {
         oldPassword: flattened.oldPassword?.[0],
         newPassword: flattened.newPassword?.[0],

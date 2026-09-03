@@ -60,6 +60,7 @@ export function PartyForm({ party }: { party?: Party }) {
           <Input
             id="name"
             name="name"
+            placeholder="Mayra Creation"
             required
             minLength={2}
             maxLength={120}
@@ -78,10 +79,11 @@ export function PartyForm({ party }: { party?: Party }) {
       <FieldSet>
         <div className="grid gap-x-4 gap-y-4 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
         <Field>
-          <FieldLabel htmlFor="ownerName1">Owner name 1 <Req /></FieldLabel>
+          <FieldLabel htmlFor="ownerName1">Owner name <Req /></FieldLabel>
           <Input
             id="ownerName1"
             name="ownerName1"
+            placeholder="Owner's full name"
             required
             minLength={2}
             maxLength={80}
@@ -93,10 +95,11 @@ export function PartyForm({ party }: { party?: Party }) {
           <FieldError errors={[{ message: state?.fieldErrors?.ownerName1 }]} />
         </Field>
         <Field>
-          <FieldLabel htmlFor="ownerName2">Owner name 2 (optional)</FieldLabel>
+          <FieldLabel htmlFor="ownerName2">Co-owner name</FieldLabel>
           <Input
             id="ownerName2"
             name="ownerName2"
+            placeholder="Second owner, if any"
             minLength={2}
             maxLength={80}
             pattern="[A-Za-z-￿ .'-]{2,}"
@@ -142,10 +145,11 @@ export function PartyForm({ party }: { party?: Party }) {
           <FieldError errors={[{ message: state?.fieldErrors?.gender }]} />
         </Field>
         <Field>
-          <FieldLabel htmlFor="email">Email</FieldLabel>
+          <FieldLabel htmlFor="email">Email address</FieldLabel>
           <Input
             id="email"
             name="email"
+            placeholder="name@example.com"
             type="email"
             defaultValue={party?.email ?? ""}
             className="h-[42px]"
@@ -154,11 +158,12 @@ export function PartyForm({ party }: { party?: Party }) {
         </Field>
         <Field>
           <FieldLabel htmlFor="contact1">
-            Contact 1 <Req />
+            Mobile number <Req />
           </FieldLabel>
           <Input
             id="contact1"
             name="contact1"
+            placeholder="98765 43210"
             type="tel"
             required
             inputMode="tel"
@@ -172,11 +177,12 @@ export function PartyForm({ party }: { party?: Party }) {
         </Field>
         <Field>
           <FieldLabel htmlFor="contact2">
-            Contact 2
+            Alternate number
           </FieldLabel>
           <Input
             id="contact2"
             name="contact2"
+            placeholder="Another number, if any"
             type="tel"
             inputMode="tel"
             pattern="[0-9+() -]{10,20}"

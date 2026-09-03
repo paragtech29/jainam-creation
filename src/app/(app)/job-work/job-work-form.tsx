@@ -363,6 +363,7 @@ export function JobWorkForm({
               <Input
                 id="pieces"
                 name="pieces"
+                placeholder="126"
                 type="number"
                 inputMode="numeric"
                 min="1"
@@ -386,6 +387,7 @@ export function JobWorkForm({
                 <Input
                   id="rate"
                   name="rate"
+                  placeholder="162"
                   inputMode="numeric"
                   pattern="[0-9]*"
                   required
@@ -445,6 +447,7 @@ export function JobWorkForm({
             <Input
               id="chalanNo"
               name="chalanNo"
+              placeholder="767"
               inputMode="numeric"
               pattern="[0-9]*"
               maxLength={20}
@@ -464,6 +467,7 @@ export function JobWorkForm({
               <Input
                 id="partyDesignNo"
                 name="partyDesignNo"
+                placeholder="7170"
                 inputMode="numeric"
                 pattern="[0-9]*"
                 maxLength={20}
@@ -478,6 +482,7 @@ export function JobWorkForm({
               <Input
                 id="computerDesignNo"
                 name="computerDesignNo"
+                placeholder="4402"
                 inputMode="numeric"
                 pattern="[0-9]*"
                 maxLength={20}
@@ -499,6 +504,7 @@ export function JobWorkForm({
             <Textarea
               id="comment"
               name="comment"
+              placeholder="Anything worth remembering about this job work"
               value={draft.comment}
               onChange={(e) => setDraft((d) => ({ ...d, comment: e.target.value }))}
               className="min-h-20"

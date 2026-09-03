@@ -36,7 +36,10 @@ export async function getKarigarById(userId: string, id: string): Promise<SilaiK
 export type KarigarListRow = {
   id: string;
   name: string;
+  // As with parties: enough to open the edit dialog from the row itself.
+  address: string | null;
   contact1: string | null;
+  contact2: string | null;
   isArchived: boolean;
   jobWorkCount: number;
   partyCount: number;
@@ -76,7 +79,9 @@ export async function listKarigarsPage(
       .select({
         id: silaiKarigars.id,
         name: silaiKarigars.name,
+        address: silaiKarigars.address,
         contact1: silaiKarigars.contact1,
+        contact2: silaiKarigars.contact2,
         isArchived: silaiKarigars.isArchived,
         jobWorkCount: sql<number>`count(distinct ${jobWorks.id})::int`,
         partyCount: sql<number>`count(distinct ${partyKarigars.partyId})::int`,

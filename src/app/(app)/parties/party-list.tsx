@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { RecordTrigger } from "@/components/record-trigger";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import type { PartyListRow } from "@/lib/db/repositories/parties";
@@ -31,8 +31,10 @@ export function PartyList({
               highlight === p.id ? "border-brand ring-1 ring-brand" : "border-border"
             )}
           >
-            <Link
-              href={`/parties/${p.id}`}
+            <RecordTrigger
+              kind="party"
+              id={p.id}
+              ariaLabel={`Edit ${p.name}`}
               className="flex min-w-0 flex-1 items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <div className="min-w-0 flex-1">
@@ -49,7 +51,7 @@ export function PartyList({
                   {p.jobWorkCount === 1 ? "job work" : "job works"}
                 </p>
               </div>
-            </Link>
+            </RecordTrigger>
             <RowActions
               name={p.name}
               noun="party"
@@ -85,13 +87,15 @@ export function PartyList({
                 )}
               >
                 <td className="h-12 px-4">
-                  <Link
-                    href={`/parties/${p.id}`}
+                  <RecordTrigger
+                    kind="party"
+                    id={p.id}
+                    ariaLabel={`Edit ${p.name}`}
                     className="flex items-center gap-2 font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {p.name}
                     {p.isArchived ? <Badge variant="secondary">Archived</Badge> : null}
-                  </Link>
+                  </RecordTrigger>
                 </td>
                 <td className="px-4 text-muted-foreground">{p.ownerName1}</td>
                 <td className="px-4 text-muted-foreground">{p.contact1 ?? "—"}</td>

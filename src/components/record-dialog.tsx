@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
+import { closeRecordDialog } from "@/components/record-dialog-store";
 import {
   Dialog,
   DialogContent,
@@ -40,11 +40,8 @@ export function RecordDialog({
   description?: string;
   children: React.ReactNode;
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
-
   return (
-    <Dialog open onOpenChange={(o) => !o && router.replace(pathname, { scroll: false })}>
+    <Dialog open onOpenChange={(o) => !o && closeRecordDialog()}>
       <DialogContent className="flex max-h-[88svh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[620px]">
         <DialogHeader className="shrink-0 border-b border-border px-5 py-4 text-left sm:px-6">
           <DialogTitle className="text-base font-semibold tracking-tight">{title}</DialogTitle>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect } from "react";
+import { closeRecordDialog, useRecordDialog } from "@/components/record-dialog-store";
 import { useRouter } from "next/navigation";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
@@ -20,7 +21,6 @@ import {
   updateKarigarAction,
   type KarigarFormState,
 } from "./actions";
-import type { SilaiKarigar } from "@/lib/db/repositories/karigars";
 import { MultiSelect } from "@/components/multi-select";
 import { Req } from "@/components/required-mark";
 
@@ -33,12 +33,21 @@ function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: st
   );
 }
 
+/** Only what this form reads — see PartyFormValues for the reasoning. */
+export type KarigarFormValues = {
+  id: string;
+  name: string;
+  address: string | null;
+  contact1: string | null;
+  contact2: string | null;
+};
+
 export function KarigarForm({
   karigar,
   parties,
   linkedPartyIds = [],
 }: {
-  karigar?: SilaiKarigar;
+  karigar?: KarigarFormValues;
   parties?: { id: string; name: string }[];
   linkedPartyIds?: string[];
 }) {
@@ -51,11 +60,16 @@ export function KarigarForm({
 
   const [state, formAction] = useActionState<KarigarFormState, FormData>(action, undefined);
 
+  const inDialog = useRecordDialog().kind === "karigar";
+
   useEffect(() => {
-    if (state?.success && state.newId) {
+    if (!state?.success) return;
+    if (inDialog) {
+      closeRecordDialog();
+    } else if (state.newId) {
       router.push(`/karigars?highlight=${state.newId}`);
     }
-  }, [state?.success, state?.newId, router]);
+  }, [state?.success, state?.newId, router, inDialog]);
 
   return (
     <form action={formAction} noValidate className="flex min-h-0 flex-1 flex-col">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { closeRecordDialog, useRecordDialog } from "@/components/record-dialog-store";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -15,13 +16,7 @@ import {
   FieldSet,
 } from "@/components/ui/field";
 import { createPartyAction, updatePartyAction, type PartyFormState } from "./actions";
-import type { getPartyById } from "@/lib/db/repositories/parties";
 import { Req } from "@/components/required-mark";
-
-// Derived from the repository's own return type (never the raw schema
-// import) so this file stays clear of the ESLint no-restricted-imports
-// rule that guards userId-scoped DB access.
-type Party = NonNullable<Awaited<ReturnType<typeof getPartyById>>>;
 
 function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
@@ -32,7 +27,24 @@ function SubmitButton({ label }: { label: string }) {
   );
 }
 
-export function PartyForm({ party }: { party?: Party }) {
+/**
+ * Only the fields this form actually reads — not the whole DB row. That lets
+ * the edit dialog open straight from a list row, which carries these columns
+ * and not userId/createdAt/logoUrl.
+ */
+export type PartyFormValues = {
+  id: string;
+  name: string;
+  ownerName1: string;
+  ownerName2: string | null;
+  address: string | null;
+  gender: string | null;
+  email: string | null;
+  contact1: string | null;
+  contact2: string | null;
+};
+
+export function PartyForm({ party }: { party?: PartyFormValues }) {
   const router = useRouter();
   // Gender is required. It starts empty so the schema's "Choose a gender"
   // actually fires on a blank submit, rather than a default silently
@@ -41,11 +53,18 @@ export function PartyForm({ party }: { party?: Party }) {
   const action = party ? updatePartyAction.bind(null, party.id) : createPartyAction;
   const [state, formAction] = useActionState<PartyFormState, FormData>(action, undefined);
 
+  const inDialog = useRecordDialog().kind === "party";
+
   useEffect(() => {
-    if (state?.success && state.newId) {
+    if (!state?.success) return;
+    if (inDialog) {
+      // revalidatePath in the action already refreshed the list underneath.
+      closeRecordDialog();
+    } else if (state.newId) {
+      // Standalone /parties/new and /parties/[id] still render this form.
       router.push(`/parties?highlight=${state.newId}`);
     }
-  }, [state, router]);
+  }, [state, router, inDialog]);
 
   return (
     <form action={formAction} noValidate className="flex min-h-0 flex-1 flex-col">

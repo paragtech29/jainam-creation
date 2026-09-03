@@ -3,8 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Plus } from "lucide-react";
+import { openRecordDialog, type RecordDialogKind } from "@/components/record-dialog-store";
 
-type Meta = { title: string; sub: string; action?: { label: string; href: string } };
+// An action is either a link to a real page (job work) or an opener for a
+// dialog (parties, karigars). Previously everything was a link to `?new=1`,
+// which is precisely what put the modal in the address bar.
+type Meta = {
+  title: string;
+  sub: string;
+  action?: { label: string; href: string } | { label: string; dialog: RecordDialogKind };
+};
 
 // Route → header copy. Kept in one place so the header and the page can never
 // disagree about what screen you are on.
@@ -12,12 +20,12 @@ function metaFor(pathname: string): Meta {
   if (pathname.startsWith("/parties/new")) return { title: "Add party", sub: "A business that gives you work" };
   if (pathname.startsWith("/parties/")) return { title: "Party", sub: "Details and linked karigars" };
   if (pathname === "/parties")
-    return { title: "Parties", sub: "The businesses who give you work", action: { label: "Add party", href: "/parties?new=1" } };
+    return { title: "Parties", sub: "The businesses who give you work", action: { label: "Add party", dialog: "party" } };
 
   if (pathname.startsWith("/karigars/new")) return { title: "Add karigar", sub: "A silai karigar you collect maal from" };
   if (pathname.startsWith("/karigars/")) return { title: "Silai Karigar", sub: "Details and the parties they work for" };
   if (pathname === "/karigars")
-    return { title: "Silai Karigar", sub: "The karigars you collect maal from", action: { label: "Add karigar", href: "/karigars?new=1" } };
+    return { title: "Silai Karigar", sub: "The karigars you collect maal from", action: { label: "Add karigar", dialog: "karigar" } };
 
   if (pathname.startsWith("/job-work/new")) return { title: "Record job work", sub: "Party, karigar, description and pieces" };
   if (pathname.startsWith("/job-work/")) return { title: "Job work", sub: "Edit this chalan" };
@@ -42,13 +50,21 @@ export function PageHeaderBar({ mobileNav }: { mobileNav: React.ReactNode }) {
       </div>
 
       {action ? (
-        <Link
-          href={action.href}
-          className="inline-flex h-10 shrink-0 items-center gap-[7px] rounded-[10px] bg-primary px-[15px] text-[13.5px] font-semibold text-primary-foreground transition-colors hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-          <Plus size={15} strokeWidth={2.3} aria-hidden="true" />
-          <span className="whitespace-nowrap">{action.label}</span>
-        </Link>
+        "dialog" in action ? (
+          <button
+            type="button"
+            onClick={() => openRecordDialog(action.dialog)}
+            className="inline-flex h-10 shrink-0 items-center gap-[7px] rounded-[10px] bg-primary px-[15px] text-[13.5px] font-semibold text-primary-foreground transition-colors hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <Plus size={15} strokeWidth={2.3} aria-hidden="true" />
+            <span className="whitespace-nowrap">{action.label}</span>
+          </button>
+        ) : (
+          <Link href={action.href} className="inline-flex h-10 shrink-0 items-center gap-[7px] rounded-[10px] bg-primary px-[15px] text-[13.5px] font-semibold text-primary-foreground transition-colors hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+            <Plus size={15} strokeWidth={2.3} aria-hidden="true" />
+            <span className="whitespace-nowrap">{action.label}</span>
+          </Link>
+        )
       ) : null}
     </header>
   );

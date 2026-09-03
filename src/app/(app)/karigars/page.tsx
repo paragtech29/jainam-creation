@@ -6,9 +6,9 @@ import { ArchivedFilter } from "@/components/status-filter";
 import { Pagination } from "@/components/pagination";
 import { EmptyState } from "@/components/empty-state";
 import { KarigarList } from "./karigar-list";
-import { RecordDialog } from "@/components/record-dialog";
-import { KarigarForm } from "./karigar-form";
+import { KarigarDialogs } from "./karigar-dialogs";
 import { listParties } from "@/lib/db/repositories/parties";
+import { listKarigarPartyLinks } from "@/lib/db/repositories/karigars";
 
 const PAGE_SIZE = 10;
 
@@ -16,7 +16,6 @@ export default async function KarigarsPage({
   searchParams,
 }: {
   searchParams: Promise<{
-    new?: string;
     archived?: string;
     highlight?: string;
     q?: string;
@@ -31,7 +30,18 @@ export default async function KarigarsPage({
   const page = Math.max(1, Number(sp.page ?? "1") || 1);
 
   const userId = await getCurrentUserId();
-  const allParties = sp.new === "1" ? await listParties(userId) : [];
+
+  // The dialogs are client-side now, so their data has to be here up front:
+  // the party list for the "works for" checklist, and the links grouped by
+  // karigar. One query each, not one per row.
+  const [allParties, allLinks] = await Promise.all([
+    listParties(userId),
+    listKarigarPartyLinks(userId),
+  ]);
+  const linksByKarigar: Record<string, string[]> = {};
+  for (const l of allLinks) {
+    (linksByKarigar[l.karigarId] ??= []).push(l.partyId);
+  }
   const { rows, total } = await listKarigarsPage(userId, {
     search,
     includeArchived,
@@ -44,14 +54,12 @@ export default async function KarigarsPage({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5">
-      {sp.new === "1" ? (
-        <RecordDialog
-          title="Add karigar"
-          description="Only the name is required. You can fill in the rest later."
-        >
-          <KarigarForm parties={allParties.map((p) => ({ id: p.id, name: p.name }))} />
-        </RecordDialog>
-      ) : null}
+      {/* Client-state dialogs — see record-dialog-store.ts. */}
+      <KarigarDialogs
+        rows={rows}
+        parties={allParties.map((p) => ({ id: p.id, name: p.name }))}
+        linksByKarigar={linksByKarigar}
+      />
 
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

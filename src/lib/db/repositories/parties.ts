@@ -27,7 +27,14 @@ export type PartyListRow = {
   id: string;
   name: string;
   ownerName1: string;
+  // Everything below is here so the edit dialog can open straight from the
+  // row the owner clicked, with no second query and no loading state.
+  ownerName2: string | null;
+  address: string | null;
+  gender: string | null;
+  email: string | null;
   contact1: string | null;
+  contact2: string | null;
   isArchived: boolean;
   jobWorkCount: number;
 };
@@ -70,7 +77,12 @@ export async function listPartiesPage(
         id: parties.id,
         name: parties.name,
         ownerName1: parties.ownerName1,
+        ownerName2: parties.ownerName2,
+        address: parties.address,
+        gender: parties.gender,
+        email: parties.email,
         contact1: parties.contact1,
+        contact2: parties.contact2,
         isArchived: parties.isArchived,
         jobWorkCount: sql<number>`count(${jobWorks.id})::int`,
       })

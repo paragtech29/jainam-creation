@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { RecordTrigger } from "@/components/record-trigger";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import type { KarigarListRow } from "@/lib/db/repositories/karigars";
@@ -28,8 +28,10 @@ export function KarigarList({
               highlight === k.id ? "border-brand ring-1 ring-brand" : "border-border"
             )}
           >
-            <Link
-              href={`/karigars/${k.id}`}
+            <RecordTrigger
+              kind="karigar"
+              id={k.id}
+              ariaLabel={`Edit ${k.name}`}
               className="flex min-w-0 flex-1 items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <div className="min-w-0 flex-1">
@@ -47,7 +49,7 @@ export function KarigarList({
                   {k.jobWorkCount === 1 ? "job work" : "job works"}
                 </p>
               </div>
-            </Link>
+            </RecordTrigger>
             <RowActions
               name={k.name}
               noun="karigar"
@@ -83,13 +85,15 @@ export function KarigarList({
                 )}
               >
                 <td className="h-12 px-4">
-                  <Link
-                    href={`/karigars/${k.id}`}
+                  <RecordTrigger
+                    kind="karigar"
+                    id={k.id}
+                    ariaLabel={`Edit ${k.name}`}
                     className="flex items-center gap-2 font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {k.name}
                     {k.isArchived ? <Badge variant="secondary">Archived</Badge> : null}
-                  </Link>
+                  </RecordTrigger>
                 </td>
                 <td className="px-4 text-muted-foreground">{k.contact1 ?? "—"}</td>
                 <td className="px-4 text-right font-mono tabular-nums text-muted-foreground">

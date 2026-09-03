@@ -6,8 +6,7 @@ import { ArchivedFilter } from "@/components/status-filter";
 import { Pagination } from "@/components/pagination";
 import { EmptyState } from "@/components/empty-state";
 import { PartyList } from "./party-list";
-import { RecordDialog } from "@/components/record-dialog";
-import { PartyForm } from "./party-form";
+import { PartyDialogs } from "./party-dialogs";
 
 const PAGE_SIZE = 10;
 
@@ -15,7 +14,6 @@ export default async function PartiesPage({
   searchParams,
 }: {
   searchParams: Promise<{
-    new?: string;
     archived?: string;
     highlight?: string;
     q?: string;
@@ -30,6 +28,7 @@ export default async function PartiesPage({
   const page = Math.max(1, Number(sp.page ?? "1") || 1);
 
   const userId = await getCurrentUserId();
+
   const { rows, total } = await listPartiesPage(userId, {
     search,
     includeArchived,
@@ -42,14 +41,9 @@ export default async function PartiesPage({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5">
-      {sp.new === "1" ? (
-        <RecordDialog
-          title="Add party"
-          description="Party name, owner name, contact number and gender are required."
-        >
-          <PartyForm />
-        </RecordDialog>
-      ) : null}
+      {/* Both dialogs live here, opened from client state — the address bar
+          never changes when a record opens. See record-dialog-store.ts. */}
+      <PartyDialogs rows={rows} />
 
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

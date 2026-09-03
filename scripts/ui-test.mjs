@@ -248,6 +248,51 @@ await page.waitForTimeout(3000);
 check("a karigar saves with no mobile (optional by design)",
   !(await page.isVisible('input[name="name"]').catch(() => false)), page.url());
 
+// ─────────────────────────── clearing a search ───────────────────────────
+// The search box holds its own state, so a URL-driven change has to be
+// re-synced into it. Without that, clearing looked broken: the list reset but
+// the typed text stayed in the box. That is why the no-match card's own
+// "Clear search and filters" button was removed — the box's cross does it.
+console.log("\n--- CLEARING A SEARCH ---");
+{
+  const boxVal = () => page.inputValue('input[type="search"]');
+
+  await page.goto(BASE + "/parties", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(800);
+  await page.fill('input[type="search"]', "zzzzz");
+  await page.waitForTimeout(1400);
+  let body = await page.evaluate(() => document.body.innerText);
+  check("a search with no hits shows the no-match state", /No parties match/.test(body));
+  check("the no-match card carries no Clear button", !/Clear search and filters/.test(body));
+
+  await page.click('button[aria-label="Clear search"]');
+  // Wait for the condition, not a guessed duration: a cold dev-server
+  // compile outlasts any fixed sleep worth writing.
+  await page.waitForURL((u) => !u.search.includes("q="), { timeout: 20000 }).catch(() => {});
+  await page.waitForTimeout(400);
+  check("the box's cross empties the box", (await boxVal()) === "", await boxVal());
+  check("the box's cross drops q from the URL", !page.url().includes("q="), page.url());
+  body = await page.evaluate(() => document.body.innerText);
+  check("the list returns after clearing", !/No parties match/.test(body));
+
+  // Job work clears via its filter panel, which navigates — the case the
+  // re-sync actually rescues.
+  await page.goto(BASE + "/job-work", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(900);
+  await page.fill('input[type="search"]', "qqqqq");
+  await page.waitForTimeout(1400);
+  const clearAll = page.locator('button:has-text("Clear all")');
+  if (await clearAll.count()) {
+    await clearAll.first().click();
+    await page
+      .waitForFunction(() => document.querySelector('input[type="search"]')?.value === "", null, { timeout: 20000 })
+      .catch(() => {});
+    check("job work's Clear all also empties the search box", (await boxVal()) === "", await boxVal());
+  } else {
+    check("job work's Clear all appears while filtering", false, "not found");
+  }
+}
+
 // ─────────────────────────── job work validation ───────────────────────────
 console.log("\n--- JOB WORK VALIDATION ---");
 await page.goto(BASE + "/job-work/new", { waitUntil: "domcontentloaded" });

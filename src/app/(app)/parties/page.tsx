@@ -74,8 +74,6 @@ export default async function PartiesPage({
             }
             fill
             variant="search"
-            actionLabel="Clear search and filters"
-            actionHref="/parties"
           />
         ) : (
           <EmptyState

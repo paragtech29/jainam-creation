@@ -21,8 +21,32 @@ export function SearchInput({
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const [value, setValue] = useState(params.get("q") ?? "");
+  const urlQuery = params.get("q") ?? "";
+
+  const [value, setValue] = useState(urlQuery);
   const first = useRef(true);
+
+  const [seenUrlQuery, setSeenUrlQuery] = useState(urlQuery);
+
+  // Re-sync when the URL changed from the OUTSIDE — the "Clear search and
+  // filters" button, a plain link, or the browser's back button. Without this
+  // the box kept its text after any of those, so clearing looked broken: the
+  // list reset but "abc" stayed sitting in the input.
+  //
+  // Adjusting state during render (rather than in an effect) is the
+  // documented React pattern for this, and this project's ESLint forbids
+  // setState inside an effect anyway.
+  //
+  // Comparing against `value` is what distinguishes an outside change from
+  // the echo of our own debounced push: the timeout below is cleared on every
+  // keystroke, so a push only ever happens once typing has settled, at which
+  // point the URL and `value` already agree. A mid-typing rewind therefore
+  // cannot happen — which is why no ref is needed here (and refs must not be
+  // read during render).
+  if (urlQuery !== seenUrlQuery) {
+    setSeenUrlQuery(urlQuery);
+    if (urlQuery !== value.trim()) setValue(urlQuery);
+  }
 
   useEffect(() => {
     if (first.current) {
@@ -31,7 +55,8 @@ export function SearchInput({
     }
     const t = setTimeout(() => {
       const next = new URLSearchParams(params.toString());
-      if (value.trim()) next.set("q", value.trim());
+      const trimmed = value.trim();
+      if (trimmed) next.set("q", trimmed);
       else next.delete("q");
       next.delete("page"); // a new search always starts at page 1
       router.replace(`${pathname}?${next.toString()}`, { scroll: false });

@@ -70,8 +70,6 @@ export default async function JobWorkPage({
             description="Nothing matches these filters. Try clearing one of them."
             fill
             variant="search"
-            actionLabel="Clear search and filters"
-            actionHref="/job-work"
           />
         ) : (
           <EmptyState

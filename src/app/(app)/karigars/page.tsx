@@ -76,8 +76,6 @@ export default async function KarigarsPage({
             }
             fill
             variant="search"
-            actionLabel="Clear search and filters"
-            actionHref="/karigars"
           />
         ) : (
           <EmptyState

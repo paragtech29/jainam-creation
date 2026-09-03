@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Field,
-  FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
@@ -23,6 +22,7 @@ import {
 } from "./actions";
 import type { SilaiKarigar } from "@/lib/db/repositories/karigars";
 import { MultiSelect } from "@/components/multi-select";
+import { Req } from "@/components/required-mark";
 
 function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
   const { pending } = useFormStatus();
@@ -58,7 +58,7 @@ export function KarigarForm({
   }, [state?.success, state?.newId, router]);
 
   return (
-    <form action={formAction} className="flex min-h-0 flex-1 flex-col">
+    <form action={formAction} noValidate className="flex min-h-0 flex-1 flex-col">
       {/* The fields scroll; the action bar below is a SIBLING, not an overlay.
           Sticky-inside-the-scroller left the scrollbar running behind the
           footer, which looked broken. */}
@@ -67,7 +67,7 @@ export function KarigarForm({
         <FieldSet>
           <div className="grid gap-x-4 gap-y-4 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
           <Field>
-            <FieldLabel htmlFor="name">Name</FieldLabel>
+            <FieldLabel htmlFor="name">Name <Req /></FieldLabel>
             <Input
               id="name"
               name="name"
@@ -99,37 +99,39 @@ export function KarigarForm({
             />
             <FieldError errors={[{ message: state?.fieldErrors?.address }]} />
           </Field>
-          <Field orientation="responsive">
-            <FieldContent>
-              <FieldLabel htmlFor="contact1">Contact 1</FieldLabel>
-              <Input
-                id="contact1"
-                name="contact1"
-                type="tel"
-                inputMode="tel"
-                pattern="[0-9+-s()]{10,20}"
-                maxLength={20}
-                title="Numbers only — 10 to 15 digits. Spaces, + - and brackets are allowed."
-                defaultValue={karigar?.contact1 ?? undefined}
-                className="h-[42px]"
-              />
-              <FieldError errors={[{ message: state?.fieldErrors?.contact1 }]} />
-            </FieldContent>
-            <FieldContent>
-              <FieldLabel htmlFor="contact2">Contact 2</FieldLabel>
-              <Input
-                id="contact2"
-                name="contact2"
-                type="tel"
-                inputMode="tel"
-                pattern="[0-9+-s()]{10,20}"
-                maxLength={20}
-                title="Numbers only — 10 to 15 digits. Spaces, + - and brackets are allowed."
-                defaultValue={karigar?.contact2 ?? undefined}
-                className="h-[42px]"
-              />
-              <FieldError errors={[{ message: state?.fieldErrors?.contact2 }]} />
-            </FieldContent>
+          <Field>
+            <FieldLabel htmlFor="contact1">
+              Contact 1
+            </FieldLabel>
+            <Input
+              id="contact1"
+              name="contact1"
+              type="tel"
+              inputMode="tel"
+              pattern="[0-9+() -]{10,20}"
+              maxLength={20}
+              title="Numbers only — 10 to 15 digits. Spaces, + - and brackets are allowed."
+              defaultValue={karigar?.contact1 ?? undefined}
+              className="h-[42px]"
+            />
+            <FieldError errors={[{ message: state?.fieldErrors?.contact1 }]} />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="contact2">
+              Contact 2
+            </FieldLabel>
+            <Input
+              id="contact2"
+              name="contact2"
+              type="tel"
+              inputMode="tel"
+              pattern="[0-9+() -]{10,20}"
+              maxLength={20}
+              title="Numbers only — 10 to 15 digits. Spaces, + - and brackets are allowed."
+              defaultValue={karigar?.contact2 ?? undefined}
+              className="h-[42px]"
+            />
+            <FieldError errors={[{ message: state?.fieldErrors?.contact2 }]} />
           </Field>
         </div>
         </FieldSet>

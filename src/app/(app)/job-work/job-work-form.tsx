@@ -42,6 +42,7 @@ import { linkSingleKarigarAction } from "../parties/actions";
 import { DescriptionRows } from "./description-rows";
 import { useDerivedRate } from "./use-derived-rate";
 import { useJobWorkDraft, type JobWorkDraft } from "./use-job-work-draft";
+import { Req } from "@/components/required-mark";
 
 type JobWorkStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED";
 
@@ -214,7 +215,7 @@ export function JobWorkForm({
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-6">
+    <form action={formAction} noValidate className="flex flex-col gap-6">
       <FieldGroup>
         <FieldSet>
           <FieldLegend variant="label">Job work</FieldLegend>
@@ -224,7 +225,7 @@ export function JobWorkForm({
           <div className="grid gap-4 lg:grid-cols-3">
 
           <Field>
-            <FieldLabel htmlFor="date">Date</FieldLabel>
+            <FieldLabel htmlFor="date">Date <Req /></FieldLabel>
             <Input
               id="date"
               name="date"
@@ -238,7 +239,7 @@ export function JobWorkForm({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="partyId">Party</FieldLabel>
+            <FieldLabel htmlFor="partyId">Party <Req /></FieldLabel>
             <Select
               name="partyId"
               value={draft.partyId}
@@ -265,7 +266,7 @@ export function JobWorkForm({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="karigarId">Silai Karigar</FieldLabel>
+            <FieldLabel htmlFor="karigarId">Silai Karigar <Req /></FieldLabel>
             {!selectedPartyId ? (
               <>
                 <Select name="karigarId" value="" disabled>
@@ -358,7 +359,7 @@ export function JobWorkForm({
 
           <Field orientation="responsive">
             <FieldContent>
-              <FieldLabel htmlFor="pieces">Pieces</FieldLabel>
+              <FieldLabel htmlFor="pieces">Pieces <Req /></FieldLabel>
               <Input
                 id="pieces"
                 name="pieces"
@@ -377,7 +378,7 @@ export function JobWorkForm({
             </FieldContent>
 
             <FieldContent>
-              <FieldLabel htmlFor="rate">Rate</FieldLabel>
+              <FieldLabel htmlFor="rate">Rate <Req /></FieldLabel>
               <div className="relative">
                 <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                   ₹
@@ -507,7 +508,7 @@ export function JobWorkForm({
 
           <div className="grid gap-4 lg:grid-cols-2">
           <Field>
-            <FieldLabel htmlFor="status">Job Work Status</FieldLabel>
+            <FieldLabel htmlFor="status">Job Work Status <Req /></FieldLabel>
             <Select
               name="status"
               value={draft.status}

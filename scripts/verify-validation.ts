@@ -90,5 +90,44 @@ check("line with no type rejected", !job({ lines: [{ descriptionTypeId: "", pric
 check("line with zero price rejected", !job({ lines: [{ descriptionTypeId: "d1", price: "0" }] }).success);
 check("bad status rejected", !job({ status: "DONE" }).success);
 
+
+// --- ASTERISK / ERROR PARITY ---
+// The red asterisks in the forms are hand-placed. If a schema rule is
+// relaxed or tightened without moving the asterisk, the form starts lying
+// about what is required. These checks pin the two together: submitting a
+// completely empty form must produce an error for exactly the starred
+// fields, and none of the unstarred ones.
+console.log("\n--- REQUIRED-FIELD PARITY (asterisks vs schema) ---");
+
+function blankErrors(schema: { safeParse: (v: unknown) => { success: boolean; error?: { issues: { path: PropertyKey[] }[] } } }, keys: string[]) {
+  const empty = Object.fromEntries(keys.map((k) => [k, ""]));
+  const r = schema.safeParse(empty);
+  if (r.success) return new Set<string>();
+  return new Set((r.error?.issues ?? []).map((i) => String(i.path[0])));
+}
+
+const partyKeys = ["name", "ownerName1", "ownerName2", "contact1", "contact2", "gender", "address", "email"];
+const partyStarred = ["name", "ownerName1", "gender", "contact1"];
+const partyBlank = blankErrors(partySchema, partyKeys);
+for (const k of partyStarred)
+  check(`party: starred "${k}" errors when blank`, partyBlank.has(k), [...partyBlank].join(","));
+for (const k of partyKeys.filter((k) => !partyStarred.includes(k)))
+  check(`party: unstarred "${k}" accepts blank`, !partyBlank.has(k));
+
+const karigarKeys = ["name", "contact1", "contact2", "address"];
+const karigarStarred = ["name"];
+const karigarBlank = blankErrors(karigarSchema, karigarKeys);
+for (const k of karigarStarred)
+  check(`karigar: starred "${k}" errors when blank`, karigarBlank.has(k));
+for (const k of karigarKeys.filter((k) => !karigarStarred.includes(k)))
+  check(`karigar: unstarred "${k}" accepts blank`, !karigarBlank.has(k));
+
+// Job work's starred fields, checked one at a time against an otherwise
+// valid record (a blank date/party/karigar is not representable as "").
+for (const k of ["date", "partyId", "karigarId", "pieces", "rate"])
+  check(`job work: starred "${k}" errors when blank`, !job({ [k]: "" }).success);
+for (const k of ["chalanNo", "partyDesignNo", "computerDesignNo", "comment"])
+  check(`job work: unstarred "${k}" accepts blank`, job({ [k]: "" }).success);
+
 console.log(failures === 0 ? "\nverify:validation finished with 0 failures." : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

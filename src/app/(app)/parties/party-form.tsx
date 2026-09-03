@@ -10,13 +10,13 @@ import { SimpleSelect } from "@/components/ui/simple-select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Field,
-  FieldContent,
   FieldError,
   FieldLabel,
   FieldSet,
 } from "@/components/ui/field";
 import { createPartyAction, updatePartyAction, type PartyFormState } from "./actions";
 import type { getPartyById } from "@/lib/db/repositories/parties";
+import { Req } from "@/components/required-mark";
 
 // Derived from the repository's own return type (never the raw schema
 // import) so this file stays clear of the ESLint no-restricted-imports
@@ -48,7 +48,7 @@ export function PartyForm({ party }: { party?: Party }) {
   }, [state, router]);
 
   return (
-    <form action={formAction} className="flex min-h-0 flex-1 flex-col">
+    <form action={formAction} noValidate className="flex min-h-0 flex-1 flex-col">
       {/* The fields scroll; the action bar below is a SIBLING, not an overlay.
           Sticky-inside-the-scroller left the scrollbar running behind the
           footer, which looked broken. */}
@@ -56,7 +56,7 @@ export function PartyForm({ party }: { party?: Party }) {
       <FieldSet>
         <div className="grid gap-x-4 gap-y-4 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
         <Field>
-          <FieldLabel htmlFor="name">Party name</FieldLabel>
+          <FieldLabel htmlFor="name">Party name <Req /></FieldLabel>
           <Input
             id="name"
             name="name"
@@ -78,7 +78,7 @@ export function PartyForm({ party }: { party?: Party }) {
       <FieldSet>
         <div className="grid gap-x-4 gap-y-4 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
         <Field>
-          <FieldLabel htmlFor="ownerName1">Owner name 1</FieldLabel>
+          <FieldLabel htmlFor="ownerName1">Owner name 1 <Req /></FieldLabel>
           <Input
             id="ownerName1"
             name="ownerName1"
@@ -125,7 +125,7 @@ export function PartyForm({ party }: { party?: Party }) {
           <FieldError errors={[{ message: state?.fieldErrors?.address }]} />
         </Field>
         <Field>
-          <FieldLabel htmlFor="gender">Gender</FieldLabel>
+          <FieldLabel htmlFor="gender">Gender <Req /></FieldLabel>
           <SimpleSelect
             id="gender"
             name="gender"
@@ -152,36 +152,40 @@ export function PartyForm({ party }: { party?: Party }) {
           />
           <FieldError errors={[{ message: state?.fieldErrors?.email }]} />
         </Field>
-        <Field orientation="responsive">
-          <FieldContent>
-            <FieldLabel htmlFor="contact1">Contact 1</FieldLabel>
-            <Input
-              id="contact1"
-              name="contact1"
-              type="tel"
-              required
-              inputMode="tel"
-              pattern="[0-9+-s()]{10,20}"
-              maxLength={20}
-              title="Numbers only — 10 to 15 digits. Spaces, + - and brackets are allowed."
-              defaultValue={party?.contact1 ?? ""}
-              className="h-[42px]"
-            />
-          </FieldContent>
-          <FieldContent>
-            <FieldLabel htmlFor="contact2">Contact 2</FieldLabel>
-            <Input
-              id="contact2"
-              name="contact2"
-              type="tel"
-              inputMode="tel"
-              pattern="[0-9+-s()]{10,20}"
-              maxLength={20}
-              title="Numbers only — 10 to 15 digits. Spaces, + - and brackets are allowed."
-              defaultValue={party?.contact2 ?? ""}
-              className="h-[42px]"
-            />
-          </FieldContent>
+        <Field>
+          <FieldLabel htmlFor="contact1">
+            Contact 1 <Req />
+          </FieldLabel>
+          <Input
+            id="contact1"
+            name="contact1"
+            type="tel"
+            required
+            inputMode="tel"
+            pattern="[0-9+() -]{10,20}"
+            maxLength={20}
+            title="Numbers only — 10 to 15 digits. Spaces, + - and brackets are allowed."
+            defaultValue={party?.contact1 ?? ""}
+            className="h-[42px]"
+          />
+          <FieldError errors={[{ message: state?.fieldErrors?.contact1 }]} />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="contact2">
+            Contact 2
+          </FieldLabel>
+          <Input
+            id="contact2"
+            name="contact2"
+            type="tel"
+            inputMode="tel"
+            pattern="[0-9+() -]{10,20}"
+            maxLength={20}
+            title="Numbers only — 10 to 15 digits. Spaces, + - and brackets are allowed."
+            defaultValue={party?.contact2 ?? ""}
+            className="h-[42px]"
+          />
+          <FieldError errors={[{ message: state?.fieldErrors?.contact2 }]} />
         </Field>
       </div>
       </FieldSet>

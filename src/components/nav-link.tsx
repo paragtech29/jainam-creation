@@ -8,17 +8,11 @@ import { NAV_ITEMS } from "./nav-items";
 /**
  * Sidebar navigation, on the dark rail.
  *
- * Active is a solid brand pill; inactive is muted teal-grey text. Counts sit
- * on the right as quiet badges so the owner can see the shape of his data
- * without opening anything.
+ * Active is a solid brand pill; inactive is muted teal-grey text. No record
+ * counts: the owner asked for them gone, and they were the only reason the
+ * layout queried parties and karigars on every page load.
  */
-export function NavLinks({
-  counts,
-  onNavigate,
-}: {
-  counts?: Partial<Record<string, number>>;
-  onNavigate?: () => void;
-}) {
+export function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
 
   return (
@@ -29,7 +23,6 @@ export function NavLinks({
 
       {NAV_ITEMS.map(({ title, href, icon: Icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
-        const badge = counts?.[href];
 
         return (
           <Link
@@ -47,16 +40,6 @@ export function NavLinks({
           >
             <Icon size={18} className="shrink-0" aria-hidden="true" />
             <span className="flex-1 text-left">{title}</span>
-            {badge != null ? (
-              <span
-                className={cn(
-                  "rounded-full px-[7px] py-px text-[11px] font-semibold tabular-nums",
-                  active ? "bg-white/16 text-white" : "bg-white/[0.07] text-sidebar-meta"
-                )}
-              >
-                {badge}
-              </span>
-            ) : null}
           </Link>
         );
       })}

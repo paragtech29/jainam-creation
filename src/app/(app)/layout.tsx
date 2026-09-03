@@ -1,8 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUserId } from "@/lib/session";
 import { getUserById } from "@/lib/db/repositories/users";
-import { listParties } from "@/lib/db/repositories/parties";
-import { listKarigars } from "@/lib/db/repositories/karigars";
 import { signOut } from "@/lib/auth";
 import { BrandLockup } from "@/components/brand-mark";
 import { NavLinks } from "@/components/nav-link";
@@ -22,19 +20,8 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  const [user, parties, karigars] = await Promise.all([
-    getUserById(userId),
-    listParties(userId),
-    listKarigars(userId),
-  ]);
+  const user = await getUserById(userId);
   if (!user) redirect("/login");
-
-  // Counts ride along in the nav so the owner can see the shape of his data
-  // without opening anything.
-  const counts = {
-    "/parties": parties.length,
-    "/karigars": karigars.length,
-  };
 
   async function logout() {
     "use server";
@@ -47,12 +34,12 @@ export default async function AppLayout({
     <div className="flex h-svh overflow-hidden bg-background">
       <aside className="sticky top-0 hidden h-svh w-[238px] shrink-0 flex-col gap-6 bg-sidebar p-[20px_14px] lg:flex">
         <BrandLockup onDark />
-        <NavLinks counts={counts} />
+        <NavLinks />
         {profile}
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <PageHeaderBar mobileNav={<MobileNav counts={counts} profile={profile} />} />
+        <PageHeaderBar mobileNav={<MobileNav profile={profile} />} />
 
         <main className="flex min-h-0 w-full flex-1 flex-col overflow-hidden px-[22px] pb-[22px] pt-[22px]">
           {children}

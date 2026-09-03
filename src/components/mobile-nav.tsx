@@ -9,10 +9,8 @@ import { NavLinks } from "./nav-link";
 // The same dark rail, slid in from the left on a phone. Radix Dialog beneath
 // gives focus trap, Escape, scroll lock and focus restore for free.
 export function MobileNav({
-  counts,
   profile,
 }: {
-  counts?: Partial<Record<string, number>>;
   profile?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -45,7 +43,7 @@ export function MobileNav({
           </button>
         </div>
 
-        <NavLinks counts={counts} onNavigate={() => setOpen(false)} />
+        <NavLinks onNavigate={() => setOpen(false)} />
         {profile}
       </SheetContent>
     </Sheet>

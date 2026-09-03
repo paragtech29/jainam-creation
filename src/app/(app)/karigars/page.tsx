@@ -43,7 +43,7 @@ export default async function KarigarsPage({
   const filtering = Boolean(search) || archivedMode !== "active";
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-1 flex-col gap-5">
       {sp.new === "1" ? (
         <RecordDialog
           title="Add karigar"
@@ -69,14 +69,23 @@ export default async function KarigarsPage({
                 ? `Nothing found for "${search}". Try a shorter search, or clear it to see everyone.`
                 : "Nothing to show for this filter."
             }
+            fill
+            variant="search"
+            actionLabel="Clear search and filters"
+            actionHref="/karigars"
           />
         ) : (
           <EmptyState
             icon={Scissors}
             title="No karigars yet"
             description="Add the silai karigars you work with, and tick which parties each one works for."
-            actionLabel="Add your first karigar"
-            actionHref="/karigars?new=1"
+            hint="Use the Add karigar button at the top right to add your first one."
+            steps={[
+              "Add the karigar — the person you collect the maal from.",
+              "Link the parties they sew for, so the right names appear together.",
+              "Pick them when you record a job work for one of those parties.",
+            ]}
+            fill
           />
         )
       ) : (

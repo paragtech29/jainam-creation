@@ -54,7 +54,7 @@ export default async function AppLayout({
       <div className="flex min-w-0 flex-1 flex-col">
         <PageHeaderBar mobileNav={<MobileNav counts={counts} profile={profile} />} />
 
-        <main className="w-full max-w-[1360px] flex-1 px-[22px] pb-20 pt-[22px]">
+        <main className="flex w-full flex-1 flex-col px-[22px] pb-[22px] pt-[22px]">
           {children}
         </main>
       </div>

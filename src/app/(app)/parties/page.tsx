@@ -41,7 +41,7 @@ export default async function PartiesPage({
   const filtering = Boolean(search) || archivedMode !== "active";
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-1 flex-col gap-5">
       {sp.new === "1" ? (
         <RecordDialog
           title="Add party"
@@ -67,14 +67,23 @@ export default async function PartiesPage({
                 ? `Nothing found for "${search}". Try a shorter search, or clear it to see everyone.`
                 : "Nothing to show for this filter."
             }
+            fill
+            variant="search"
+            actionLabel="Clear search and filters"
+            actionHref="/parties"
           />
         ) : (
           <EmptyState
             icon={Building2}
             title="No parties yet"
             description="Add the businesses who give you work. You'll pick one every time you record a job work."
-            actionLabel="Add your first party"
-            actionHref="/parties?new=1"
+            hint="Use the Add party button at the top right to add your first one."
+            steps={[
+              "Add the party — the business that gives you the maal.",
+              "Link the silai karigars you collect their maal from.",
+              "Record a job work against them, and the totals add up here.",
+            ]}
+            fill
           />
         )
       ) : (

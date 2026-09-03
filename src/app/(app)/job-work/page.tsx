@@ -50,7 +50,7 @@ export default async function JobWorkPage({
     Boolean(search) || Boolean(sp.from || sp.to || sp.party || sp.karigar || sp.status || sp.billed);
 
   return (
-    <div className="flex flex-col gap-3.5">
+    <div className="flex flex-1 flex-col gap-3.5">
 
       <JobWorkFilters
         parties={parties.map((p) => ({ id: p.id, name: p.name }))}
@@ -63,14 +63,23 @@ export default async function JobWorkPage({
             icon={ClipboardList}
             title="No job works match"
             description="Nothing matches these filters. Try clearing one of them."
+            fill
+            variant="search"
+            actionLabel="Clear search and filters"
+            actionHref="/job-work"
           />
         ) : (
           <EmptyState
             icon={ClipboardList}
             title="No job works yet"
             description="Record your first chalan — date, party, karigar, description rows and pieces."
-            actionLabel="Add your first job work"
-            actionHref="/job-work/new"
+            hint="Use the Add job work button at the top right to record your first one."
+            steps={[
+              "Pick the party and the karigar you took the maal from.",
+              "Add the description rows — galu, patti, daman — and the pieces.",
+              "The rate and total are worked out for you, as in the book.",
+            ]}
+            fill
           />
         )
       ) : (

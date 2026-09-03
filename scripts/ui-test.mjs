@@ -264,6 +264,45 @@ check("job work names the party, the karigar and the description rows",
 check("no raw zod message reaches the owner",
   !e.some((x) => /invalid input|expected string|received undefined/i.test(x)), e.join(" | "));
 
+// ─────────────────────────── nothing is clipped ───────────────────────────
+// The shell is overflow-hidden, so content taller than the body is CLIPPED
+// unless it sits inside a scroll region. A short screen is where that shows up
+// first, so check one. This caught the job work empty state being cut off at
+// the bottom with no way to scroll down to it.
+console.log("\n--- NOTHING IS CLIPPED (short screen) ---");
+{
+  const shortCtx = await browser.newContext({ viewport: { width: 1366, height: 620 } });
+  const sp = await shortCtx.newPage();
+  await login(sp);
+  for (const path of ["/dashboard", "/parties", "/karigars", "/job-work", "/job-work/new", "/settings"]) {
+    await sp.goto(BASE + path, { waitUntil: "domcontentloaded" });
+    await sp.waitForTimeout(700);
+    const r = await sp.evaluate(() => {
+      const vh = window.innerHeight;
+      const clipped = [];
+      for (const el of document.querySelectorAll("main *")) {
+        const b = el.getBoundingClientRect();
+        if (b.height === 0 || b.bottom <= vh + 2) continue;
+        // Below the fold is fine IF some ancestor can scroll it into view.
+        let n = el.parentElement;
+        let reachable = false;
+        while (n && n !== document.body) {
+          const st = getComputedStyle(n);
+          if ((st.overflowY === "auto" || st.overflowY === "scroll") && n.scrollHeight > n.clientHeight + 1) {
+            reachable = true;
+            break;
+          }
+          n = n.parentElement;
+        }
+        if (!reachable) clipped.push(el.tagName.toLowerCase() + "." + String(el.className).slice(0, 30));
+      }
+      return { count: clipped.length, first: clipped.slice(0, 2).join(" ; ") };
+    });
+    check(`${path}: nothing clipped at 1366x620`, r.count === 0, r.first);
+  }
+  await shortCtx.close();
+}
+
 console.log("\njs page errors across the run:", jsErrors.length ? jsErrors.join(" | ") : "none");
 console.log(`\n${pass} passed, ${failures.length} failed, ${skipped} skipped`);
 if (failures.length) console.log("FAILURES:\n  " + failures.join("\n  "));

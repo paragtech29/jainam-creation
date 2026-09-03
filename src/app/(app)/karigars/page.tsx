@@ -59,9 +59,14 @@ export default async function KarigarsPage({
         <ArchivedFilter />
       </div>
 
-      {rows.length === 0 ? (
-        filtering ? (
-          <EmptyState
+      {/* The shell is overflow-hidden, so anything taller than the body is
+          clipped rather than scrolled. This scroller wraps the whole content
+          area — list OR empty state — so nothing is ever unreachable on a
+          short screen. The pager stays outside it, pinned to the bottom. */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {rows.length === 0 ? (
+          filtering ? (
+            <EmptyState
             icon={Scissors}
             title="No karigars match"
             description={
@@ -87,20 +92,20 @@ export default async function KarigarsPage({
             ]}
             fill
           />
-        )
-      ) : (
-        <>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <KarigarList karigars={rows} highlight={sp.highlight} />
-          </div>
-          <Pagination
-            page={page}
-            pageSize={PAGE_SIZE}
-            total={total}
-            baseParams={{ q: search, archived: archivedMode === "active" ? undefined : archivedMode }}
-          />
-        </>
-      )}
+          )
+        ) : (
+          <KarigarList karigars={rows} highlight={sp.highlight} />
+        )}
+      </div>
+
+      {rows.length > 0 ? (
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={total}
+          baseParams={{ q: search, archived: archivedMode === "active" ? undefined : archivedMode }}
+        />
+      ) : null}
     </div>
   );
 }

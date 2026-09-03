@@ -57,9 +57,14 @@ export default async function JobWorkPage({
         karigars={karigars.map((k) => ({ id: k.id, name: k.name }))}
       />
 
-      {rows.length === 0 ? (
-        filtering ? (
-          <EmptyState
+      {/* The shell is overflow-hidden, so anything taller than the body is
+          clipped rather than scrolled. This page is the tightest case — the
+          filter panel is tall — so the scroller wraps the whole content area,
+          list OR empty state. The totals bar stays outside it. */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {rows.length === 0 ? (
+          filtering ? (
+            <EmptyState
             icon={ClipboardList}
             title="No job works match"
             description="Nothing matches these filters. Try clearing one of them."
@@ -81,13 +86,14 @@ export default async function JobWorkPage({
             ]}
             fill
           />
-        )
-      ) : (
-        <>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <JobWorkList rows={rows} highlight={sp.highlight} />
-          </div>
+          )
+        ) : (
+          <JobWorkList rows={rows} highlight={sp.highlight} />
+        )}
+      </div>
 
+      {rows.length > 0 ? (
+        <>
           {/* Summed in SQL across the whole filtered set, not just this page. */}
           <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-[14px] border border-border bg-card px-[18px] py-3">
             <Pagination
@@ -113,7 +119,7 @@ export default async function JobWorkPage({
             </span>
           </div>
         </>
-      )}
+      ) : null}
     </div>
   );
 }

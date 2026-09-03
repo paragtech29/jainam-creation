@@ -37,10 +37,8 @@ const VIEWPORTS = {
 const ROUTES = [
   ["dashboard", "/dashboard"],
   ["parties", "/parties"],
-  ["parties-new", "/parties?new=1"],
   ["parties-nomatch", "/parties?q=zzzzz"],
   ["karigars", "/karigars"],
-  ["karigars-new", "/karigars?new=1"],
   ["jobwork", "/job-work"],
   ["jobwork-new", "/job-work/new"],
   ["settings", "/settings"],
@@ -60,6 +58,16 @@ function check(label, ok, detail = "") {
   if (ok) pass++;
   else failures.push(label + (detail ? "  (" + detail + ")" : ""));
   console.log(`${ok ? "PASS" : "FAIL"} - ${label}${detail ? "  (" + detail + ")" : ""}`);
+}
+
+/**
+ * Open a create dialog by pressing the header button, because the dialogs are
+ * client state now and no URL opens them.
+ */
+async function openCreateDialog(page, label) {
+  await page.locator(`button:has-text("${label}")`).first().click();
+  await page.waitForSelector('[role="dialog"]', { timeout: 25000 });
+  await page.waitForTimeout(300);
 }
 
 async function login(page) {
@@ -175,8 +183,9 @@ for (const [label, path, expectPager] of [
 
 // ─────────────────────────── party validation ───────────────────────────
 console.log("\n--- PARTY VALIDATION ---");
-await page.goto(BASE + "/parties?new=1", { waitUntil: "domcontentloaded" });
-await page.waitForTimeout(1100);
+await page.goto(BASE + "/parties", { waitUntil: "domcontentloaded" });
+await page.waitForTimeout(800);
+await openCreateDialog(page, "Add party");
 // The submit button disables itself while the action is in flight
 // (useFormStatus). Clicking it while disabled silently does NOTHING, and the
 // error still on screen is the PREVIOUS one - which is exactly how this
@@ -213,7 +222,8 @@ const submitAndSettle = async (label) => {
   await page.locator(`button:has-text("${label}")`).last().click();
   await btnState(label, "disabled");
   await Promise.race([
-    page.waitForURL((u) => !u.search.includes("new=1"), { timeout: 25000 }),
+    // A successful save closes the dialog; a refusal re-enables the button.
+    page.waitForFunction(() => !document.querySelector('[role="dialog"]'), null, { timeout: 25000 }),
     btnState(label, "enabled"),
   ]).catch(() => {});
   await page.waitForTimeout(400);
@@ -266,12 +276,12 @@ check("a failed submit keeps every other field",
 await page.fill('input[name="contact1"]', "9876598765");
 await addParty();
 await Promise.race([
-  page.waitForURL((u) => !u.search.includes("new=1"), { timeout: 20000 }),
+  page.waitForFunction(() => !document.querySelector('[role="dialog"]'), null, { timeout: 20000 }),
   page.waitForSelector('[data-slot="field-error"]', { timeout: 20000 }),
 ]).catch(() => {});
 await page.waitForTimeout(600);
 {
-  const savedOk = !(await page.isVisible('input[name="name"]').catch(() => false));
+  const savedOk = !(await page.isVisible('[role="dialog"]').catch(() => false));
   check("fixing the one flagged field saves the party", savedOk,
     savedOk ? page.url() : (await errs()).join(" | ") + " @ " + page.url());
 }
@@ -284,8 +294,9 @@ await page.waitForTimeout(600);
 console.log("\n--- A PARTY NAME MUST BE UNIQUE ---");
 {
   const fillParty = async (name, owner, coOwner, c1, c2) => {
-    await page.goto(BASE + "/parties?new=1", { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(1100);
+    await page.goto(BASE + "/parties", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(800);
+    await openCreateDialog(page, "Add party");
     await page.fill('input[name="name"]', name);
     await page.fill('input[name="ownerName1"]', owner);
     if (coOwner) await page.fill('input[name="ownerName2"]', coOwner);
@@ -297,7 +308,9 @@ console.log("\n--- A PARTY NAME MUST BE UNIQUE ---");
     await page.waitForTimeout(300);
     await addParty();
     return {
-      saved: !(await page.isVisible('input[name="name"]').catch(() => false)),
+      // The dialog closing is the real signal. "The name input is gone" was
+      // also true when the dialog never opened at all.
+      saved: !(await page.isVisible('[role="dialog"]').catch(() => false)),
       errors: await errs(),
     };
   };
@@ -324,8 +337,9 @@ console.log("\n--- A PARTY NAME MUST BE UNIQUE ---");
 
 // ─────────────────────────── karigar validation ───────────────────────────
 console.log("\n--- KARIGAR VALIDATION ---");
-await page.goto(BASE + "/karigars?new=1", { waitUntil: "domcontentloaded" });
-await page.waitForTimeout(1100);
+await page.goto(BASE + "/karigars", { waitUntil: "domcontentloaded" });
+await page.waitForTimeout(800);
+await openCreateDialog(page, "Add karigar");
 const addKarigar = () => submitAndSettle("Add karigar");
 
 await addKarigar();
@@ -350,7 +364,7 @@ await page.fill('input[name="contact1"]', "");
 await addKarigar();
 await page.waitForTimeout(3000);
 check("a karigar saves with no mobile (optional by design)",
-  !(await page.isVisible('input[name="name"]').catch(() => false)), page.url());
+  !(await page.isVisible('[role="dialog"]').catch(() => false)), page.url());
 
 // ─────────────────────────── clearing a search ───────────────────────────
 // The search box holds its own state, so a URL-driven change has to be
@@ -414,6 +428,65 @@ check("job work names the party, the karigar and the description rows",
   e.join(" | "));
 check("no raw zod message reaches the owner",
   !e.some((x) => /invalid input|expected string|received undefined/i.test(x)), e.join(" | "));
+
+// ─────────── the dialogs: cancel, and save only when changed ───────────
+// Two things the owner found: Cancel did nothing (it was a link to the page
+// the dialog was already sitting on, so the dialog stayed open), and "Save
+// changes" was enabled on an untouched form, inviting a write with nothing
+// to write.
+console.log("\n--- DIALOG CANCEL AND DIRTY-GATING ---");
+{
+  const saveDisabled = () =>
+    page.evaluate(() => {
+      const b = [...document.querySelectorAll('[role="dialog"] button')].find((x) =>
+        /save changes/i.test(x.textContent || "")
+      );
+      return b ? b.disabled : null;
+    });
+
+  const openFirstParty = async () => {
+    await page.goto(BASE + "/parties", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(800);
+    await page.locator("table tbody tr td button").first().click();
+    await page.waitForSelector('[role="dialog"]', { timeout: 20000 });
+  };
+
+  await openFirstParty();
+  await page.locator('[role="dialog"] button:has-text("Cancel")').click();
+  await page
+    .waitForFunction(() => !document.querySelector('[role="dialog"]'), null, { timeout: 15000 })
+    .catch(() => {});
+  check("Cancel closes the dialog", !(await page.isVisible('[role="dialog"]').catch(() => false)));
+  check("Cancel leaves the URL alone", page.url().endsWith("/parties"), page.url());
+
+  await openFirstParty();
+  check("Save changes starts disabled on an untouched form", (await saveDisabled()) === true);
+
+  const was = await page.inputValue('input[name="name"]');
+  await page.fill('input[name="name"]', was + "X");
+  await page.waitForTimeout(350);
+  check("typing enables Save", (await saveDisabled()) === false);
+
+  await page.fill('input[name="name"]', was);
+  await page.waitForTimeout(350);
+  check("undoing the change disables Save again", (await saveDisabled()) === true);
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(400);
+
+  // A create form must stay submittable, or a blank save could never show its
+  // required-field messages.
+  await page.locator('button:has-text("Add party")').first().click();
+  await page.waitForSelector('[role="dialog"]', { timeout: 20000 });
+  const addDisabled = await page.evaluate(() => {
+    const b = [...document.querySelectorAll('[role="dialog"] button')].find((x) =>
+      /add party/i.test(x.textContent || "")
+    );
+    return b ? b.disabled : null;
+  });
+  check("Add party stays enabled on a blank create form", addDisabled === false);
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(400);
+}
 
 // ─────────────────────────── nothing is clipped ───────────────────────────
 // The shell is overflow-hidden, so content taller than the body is CLIPPED

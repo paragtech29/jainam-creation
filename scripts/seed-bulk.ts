@@ -39,7 +39,10 @@ async function main() {
   }
   const userId = user.id;
 
-  if (WIPE) {
+  // Removing its own rows is now a reusable step, because a party name is
+  // unique per user (drizzle/0002): re-running the seed over its own previous
+  // output used to die on a 23505 halfway through, leaving a partial mess.
+  async function wipeOwnRows(): Promise<number> {
     let removed = 0;
     const jobs = await listJobWorksPage(userId, { search: PREFIX, page: 1, pageSize: 500 });
     for (const j of jobs.rows) {
@@ -58,8 +61,28 @@ async function main() {
         removed++;
       }
     }
+    return removed;
+  }
+
+  if (WIPE) {
+    const removed = await wipeOwnRows();
     console.log(`Removed ${removed} "${PREFIX}" row(s). Real records untouched.`);
     return;
+  }
+
+  // Check the prerequisite BEFORE writing anything. This used to be checked
+  // after creating 24 parties and 24 karigars, so a missing description type
+  // left 48 stray rows behind.
+  const typesUpFront = await listDescriptionTypes(userId);
+  if (typesUpFront.length === 0) {
+    console.error("No description types exist, so job works cannot be seeded.");
+    console.error("Run `npm run seed:masters` first, then try again. Nothing was written.");
+    process.exit(1);
+  }
+
+  const alreadyThere = await wipeOwnRows();
+  if (alreadyThere > 0) {
+    console.log(`Cleared ${alreadyThere} row(s) from a previous seed first.`);
   }
 
   const pad = (n: number) => String(n).padStart(2, "0");

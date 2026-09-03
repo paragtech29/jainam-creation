@@ -17,11 +17,19 @@ import {
 } from "@/components/ui/field";
 import { createPartyAction, updatePartyAction, type PartyFormState } from "./actions";
 import { Req } from "@/components/required-mark";
+import { useDirtyFields } from "@/lib/use-dirty-fields";
 
-function SubmitButton({ label }: { label: string }) {
+function SubmitButton({ label, disabled }: { label: string; disabled?: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} className="h-10 px-5">
+    <Button
+      type="submit"
+      disabled={pending || disabled}
+      // Says WHY it is disabled. A greyed-out button with no explanation is
+      // the same dead end as a broken one.
+      title={disabled && !pending ? "Nothing has changed yet" : undefined}
+      className="h-10 px-5"
+    >
       {pending ? "Saving…" : label}
     </Button>
   );
@@ -50,6 +58,19 @@ export function PartyForm({ party }: { party?: PartyFormValues }) {
   // actually fires on a blank submit, rather than a default silently
   // satisfying it.
   const [gender, setGender] = useState(party?.gender ?? "");
+  // Only an EDIT gates its button on having changes. A create form must stay
+  // submittable so a blank save still surfaces "Please enter party name".
+  const { formRef, dirty, recheck } = useDirtyFields({
+    name: party?.name ?? "",
+    ownerName1: party?.ownerName1 ?? "",
+    ownerName2: party?.ownerName2 ?? "",
+    address: party?.address ?? "",
+    gender: party?.gender ?? "",
+    email: party?.email ?? "",
+    contact1: party?.contact1 ?? "",
+    contact2: party?.contact2 ?? "",
+  });
+
   const action = party ? updatePartyAction.bind(null, party.id) : createPartyAction;
   const [state, formAction] = useActionState<PartyFormState, FormData>(action, undefined);
 
@@ -67,7 +88,16 @@ export function PartyForm({ party }: { party?: PartyFormValues }) {
   }, [state, router, inDialog]);
 
   return (
-    <form action={formAction} noValidate className="flex min-h-0 flex-1 flex-col">
+    <form
+      ref={formRef}
+      action={formAction}
+      noValidate
+      // onInput catches typing; onChange catches the dropdowns, which Radix
+      // reports by dispatching a bubbling change on its hidden select.
+      onInput={recheck}
+      onChange={recheck}
+      className="flex min-h-0 flex-1 flex-col"
+    >
       {/* The fields scroll; the action bar below is a SIBLING, not an overlay.
           Sticky-inside-the-scroller left the scrollbar running behind the
           footer, which looked broken. */}
@@ -224,10 +254,24 @@ export function PartyForm({ party }: { party?: PartyFormValues }) {
             </p>
           ) : null}
           <div className="flex shrink-0 items-center justify-end gap-2.5 border-t border-border bg-muted/40 px-5 py-3.5 sm:px-6">
-            <Button asChild variant="outline" className="h-10 px-4">
-              <Link href="/parties">Cancel</Link>
-            </Button>
-            <SubmitButton label={party ? "Save changes" : "Add party"} />
+            {inDialog ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeRecordDialog}
+                className="h-10 px-4"
+              >
+                Cancel
+              </Button>
+            ) : (
+              <Button asChild variant="outline" className="h-10 px-4">
+                <Link href="/parties">Cancel</Link>
+              </Button>
+            )}
+            <SubmitButton
+              label={party ? "Save changes" : "Add party"}
+              disabled={Boolean(party) && !dirty}
+            />
           </div>
     </form>
   );

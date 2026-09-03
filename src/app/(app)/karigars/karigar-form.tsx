@@ -23,11 +23,25 @@ import {
 } from "./actions";
 import { MultiSelect } from "@/components/multi-select";
 import { Req } from "@/components/required-mark";
+import { useDirtyFields } from "@/lib/use-dirty-fields";
 
-function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
+function SubmitButton({
+  label,
+  pendingLabel,
+  disabled,
+}: {
+  label: string;
+  pendingLabel: string;
+  disabled?: boolean;
+}) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} className="h-10 px-5">
+    <Button
+      type="submit"
+      disabled={pending || disabled}
+      title={disabled && !pending ? "Nothing has changed yet" : undefined}
+      className="h-10 px-5"
+    >
       {pending ? pendingLabel : label}
     </Button>
   );
@@ -58,6 +72,14 @@ export function KarigarForm({
     ? updateKarigarAction.bind(null, karigar.id)
     : createKarigarAction;
 
+  // Only an EDIT gates its button on having changes — see the party form.
+  const { formRef, dirty, recheck, markDirty } = useDirtyFields({
+    name: karigar?.name ?? "",
+    address: karigar?.address ?? "",
+    contact1: karigar?.contact1 ?? "",
+    contact2: karigar?.contact2 ?? "",
+  });
+
   const [state, formAction] = useActionState<KarigarFormState, FormData>(action, undefined);
 
   const inDialog = useRecordDialog().kind === "karigar";
@@ -72,7 +94,14 @@ export function KarigarForm({
   }, [state?.success, state?.newId, router, inDialog]);
 
   return (
-    <form action={formAction} noValidate className="flex min-h-0 flex-1 flex-col">
+    <form
+      ref={formRef}
+      action={formAction}
+      noValidate
+      onInput={recheck}
+      onChange={recheck}
+      className="flex min-h-0 flex-1 flex-col"
+    >
       {/* The fields scroll; the action bar below is a SIBLING, not an overlay.
           Sticky-inside-the-scroller left the scrollbar running behind the
           footer, which looked broken. */}
@@ -159,6 +188,7 @@ export function KarigarForm({
             <>
               <MultiSelect
                 name="partyIds"
+                onSelectionChange={markDirty}
                 options={parties.map((p) => ({ id: p.id, label: p.name }))}
                 defaultSelected={linkedPartyIds}
                 placeholder="Select parties"
@@ -193,19 +223,32 @@ export function KarigarForm({
           <input type="hidden" name="confirmDuplicate" value="true" />
           <div className="flex gap-2">
             <SubmitButton label="Add anyway" pendingLabel="Adding..." />
-            <Button asChild variant="outline" className="h-[42px]">
-              <Link href="/karigars">Cancel</Link>
-            </Button>
+            {inDialog ? (
+              <Button type="button" variant="outline" onClick={closeRecordDialog} className="h-[42px]">
+                Cancel
+              </Button>
+            ) : (
+              <Button asChild variant="outline" className="h-[42px]">
+                <Link href="/karigars">Cancel</Link>
+              </Button>
+            )}
           </div>
         </div>
       ) : (
         <div className="flex shrink-0 items-center justify-end gap-2.5 border-t border-border bg-muted/40 px-5 py-3.5 sm:px-6">
-          <Button asChild variant="outline" className="h-10 px-4">
-            <Link href="/karigars">Cancel</Link>
-          </Button>
+          {inDialog ? (
+            <Button type="button" variant="outline" onClick={closeRecordDialog} className="h-10 px-4">
+              Cancel
+            </Button>
+          ) : (
+            <Button asChild variant="outline" className="h-10 px-4">
+              <Link href="/karigars">Cancel</Link>
+            </Button>
+          )}
           <SubmitButton
             label={isEdit ? "Save changes" : "Add karigar"}
             pendingLabel="Saving…"
+            disabled={isEdit && !dirty}
           />
         </div>
       )}

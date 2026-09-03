@@ -28,6 +28,7 @@ export function MultiSelect({
   name,
   options,
   defaultSelected = [],
+  onSelectionChange,
   placeholder,
   searchPlaceholder,
   emptyText,
@@ -35,6 +36,12 @@ export function MultiSelect({
   name: string;
   options: Option[];
   defaultSelected?: string[];
+  /**
+   * Selection lives in React state and is posted through hidden inputs, so
+   * nothing user-driven fires on the form when it changes. A form that wants
+   * to know (to enable its Save button) has to be told.
+   */
+  onSelectionChange?: (ids: string[]) => void;
   placeholder: string;
   searchPlaceholder: string;
   emptyText: string;
@@ -43,7 +50,11 @@ export function MultiSelect({
   const [open, setOpen] = useState(false);
 
   const toggle = (id: string) =>
-    setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+    setSelected((cur) => {
+      const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
+      onSelectionChange?.(next);
+      return next;
+    });
 
   const chosen = options.filter((o) => selected.includes(o.id));
 

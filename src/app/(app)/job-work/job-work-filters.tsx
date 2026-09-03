@@ -53,11 +53,11 @@ export function JobWorkFilters({
         ) : null}
       </div>
 
-      <div className="grid gap-x-3 gap-y-2.5 [grid-template-columns:repeat(auto-fit,minmax(158px,1fr))]">
+      <div className="flex flex-wrap items-end gap-x-3 gap-y-2.5">
         {/* Search sits with the other filters rather than floating above them —
             it is the same act, narrowing the list. Given two columns because
             a chalan or design number needs the room. */}
-        <label className="flex flex-col gap-1.5 sm:col-span-2">
+        <label className="flex min-w-[220px] flex-1 flex-col gap-1.5 sm:max-w-[320px]">
           <span className={label}>Search</span>
           <SearchInput
             placeholder="Chalan no., design no., party or karigar"
@@ -82,7 +82,6 @@ export function JobWorkFilters({
             value={get("party") || "all"}
             onValueChange={(v) => set("party", v === "all" ? "" : v)}
             ariaLabel="Filter by party"
-            fullWidth
             className="h-10"
             options={[{ value: "all", label: "All parties" }, ...parties.map((p) => ({ value: p.id, label: p.name }))]}
           />
@@ -94,7 +93,6 @@ export function JobWorkFilters({
             value={get("karigar") || "all"}
             onValueChange={(v) => set("karigar", v === "all" ? "" : v)}
             ariaLabel="Filter by silai karigar"
-            fullWidth
             className="h-10"
             options={[{ value: "all", label: "All karigars" }, ...karigars.map((k) => ({ value: k.id, label: k.name }))]}
           />
@@ -106,7 +104,6 @@ export function JobWorkFilters({
             value={get("status") || "any"}
             onValueChange={(v) => set("status", v === "any" ? "" : v)}
             ariaLabel="Filter by job work status"
-            fullWidth
             className="h-10"
             options={[
               { value: "any", label: "Any status" },
@@ -123,7 +120,6 @@ export function JobWorkFilters({
             value={get("billed") || "any"}
             onValueChange={(v) => set("billed", v === "any" ? "" : v)}
             ariaLabel="Filter by bill status"
-            fullWidth
             className="h-10"
             options={[
               { value: "any", label: "Any" },

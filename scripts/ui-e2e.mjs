@@ -11,7 +11,7 @@ import { chromium } from "playwright";
 const BASE = "http://localhost:3000";
 
 let pass = 0; const fails = [];
-const check = (l, ok, d = "") => { ok ? pass++ : fails.push(l + " " + d); console.log(`${ok ? "PASS" : "FAIL"} - ${l}${d ? "  (" + d + ")" : ""}`); };
+const check = (l, ok, d = "") => { if (ok) pass++; else fails.push(l + " " + d); console.log(`${ok ? "PASS" : "FAIL"} - ${l}${d ? "  (" + d + ")" : ""}`); };
 
 const browser = await chromium.launch({ headless: true });
 const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 } });

@@ -1,0 +1,21 @@
+-- A party name must be unique per user, case-insensitively.
+--
+-- The application already refuses a duplicate before inserting, but a check
+-- followed by an insert is not atomic: two quick submits (a double-tap on a
+-- phone, or an impatient second click) can both pass the check and both
+-- insert. This index is the only thing that actually GUARANTEES uniqueness.
+-- The Server Action catches its 23505 and shows the same friendly message.
+--
+-- lower(name) so "Mayra" and "mayra" collide — matching findPartiesByName,
+-- which has always compared case-insensitively.
+--
+-- Archived parties are deliberately INCLUDED. An archived party still owns
+-- its job works and its earnings history; letting a second party take the
+-- same name would make "how much did I earn from Mayra" ambiguous forever.
+-- The form tells the owner to restore the archived one instead.
+--
+-- Hand-written rather than generated: drizzle-kit cannot express a functional
+-- index on lower(name) in the schema DSL, and `db:generate` needs an
+-- interactive TTY that is not available here.
+CREATE UNIQUE INDEX IF NOT EXISTS "parties_user_name_unique"
+  ON "parties" ("user_id", lower("name"));

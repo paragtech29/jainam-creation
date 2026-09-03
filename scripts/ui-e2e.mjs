@@ -34,7 +34,10 @@ await page.fill('input[name="date"]', "2026-08-14");
 // Party -> then karigar becomes selectable (the dependent dropdown).
 await page.click('[id="partyId"]');
 await page.waitForTimeout(500);
-await page.click('[role="option"]:has-text("Mayra")');
+// EXACT: has-text() matches substrings, so "Mayra" also matched a stray test
+// party called "Mayra Creation" - which had no linked karigar, so the
+// dependent dropdown never appeared and the run died on a timeout.
+await page.getByRole("option", { name: "Mayra", exact: true }).click();
 await page.waitForTimeout(900);
 
 const karigarEnabled = await page.evaluate(() => {
@@ -45,7 +48,7 @@ check("choosing a party unlocks the karigar dropdown", karigarEnabled);
 
 await page.click('[id="karigarId"]');
 await page.waitForTimeout(500);
-await page.click('[role="option"]:has-text("Zuber")');
+await page.getByRole("option", { name: "Zuber", exact: true }).click();
 await page.waitForTimeout(500);
 
 // One description row: pick a type, type a price.

@@ -106,3 +106,30 @@ export function requiredChoice(message: string) {
     z.string().min(1, message)
   );
 }
+
+/**
+ * Two fields that must not carry the same value — a co-owner who is the same
+ * person as the owner, or an "alternate" number identical to the main one.
+ * Both were accepted before this existed, which made the second field
+ * meaningless: it looked filled in while carrying no new information.
+ *
+ * Comparison ignores case and surrounding space, so "Amba bhai" and
+ * " amba BHAI " are caught. A blank second value is fine — that is simply
+ * an optional field left alone.
+ */
+export function distinctPair(
+  ctx: { addIssue: (i: { code: "custom"; message: string; path: (string | number)[] }) => void },
+  first: string | undefined,
+  second: string | undefined,
+  secondPath: string,
+  message: string
+) {
+  const a = (first ?? "").trim().toLowerCase();
+  const b = (second ?? "").trim().toLowerCase();
+  if (!a || !b) return;
+  // Phone numbers are compared on their digits, so "98765 43210" and
+  // "9876543210" are recognised as the same number.
+  const digitsOnly = (v: string) => v.replace(/\D/g, "");
+  const same = a === b || (digitsOnly(a) !== "" && digitsOnly(a) === digitsOnly(b));
+  if (same) ctx.addIssue({ code: "custom", message, path: [secondPath] });
+}

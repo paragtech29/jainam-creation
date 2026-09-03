@@ -129,5 +129,19 @@ for (const k of ["date", "partyId", "karigarId", "pieces", "rate"])
 for (const k of ["chalanNo", "partyDesignNo", "computerDesignNo", "comment"])
   check(`job work: unstarred "${k}" accepts blank`, job({ [k]: "" }).success);
 
+// --- FIELD PAIRS THAT MUST DIFFER ---
+// A co-owner who is the same person as the owner, or an "alternate" number
+// identical to the main one, were both accepted before. The second field
+// then looked filled in while carrying no new information.
+console.log("\n--- PAIRS THAT MUST DIFFER ---");
+check("co-owner identical to owner rejected", !party({ ownerName2: "Mayra bhai" }).success);
+check("co-owner identical ignoring case/space rejected", !party({ ownerName2: "  mayra BHAI " }).success);
+check("a genuinely different co-owner accepted", party({ ownerName2: "Nita ben" }).success);
+check("alternate number identical to mobile rejected", !party({ contact2: "9876500001" }).success);
+check("alternate number identical ignoring spacing rejected", !party({ contact2: "98765 00001" }).success);
+check("a genuinely different alternate number accepted", party({ contact2: "9876500002" }).success);
+check("karigar alternate identical to mobile rejected", !karigar({ contact1: "9876511111", contact2: "98765 11111" }).success);
+check("karigar different alternate accepted", karigar({ contact1: "9876511111", contact2: "9876522222" }).success);
+
 console.log(failures === 0 ? "\nverify:validation finished with 0 failures." : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

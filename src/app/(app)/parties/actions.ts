@@ -18,7 +18,6 @@ export type PartyFormState =
   | {
       error?: string;
       fieldErrors?: Partial<Record<keyof PartyInput, string>>;
-      duplicateWarning?: string;
       success?: boolean;
       /** Echo of the submitted strings - see readValues(). */
       values?: Record<string, string>;
@@ -40,6 +39,21 @@ function readValues(formData: FormData): Record<string, string> {
     if (typeof v === "string") out[k] = v;
   }
   return out;
+}
+
+// The unique index (drizzle/0002) is what actually guarantees uniqueness;
+// the pre-check below is just there to give a nicer message first. Postgres
+// raises 23505 if two submits race past the pre-check.
+function isDuplicateName(err: unknown): boolean {
+  const code = (err as { code?: string; cause?: { code?: string } })?.code
+    ?? (err as { cause?: { code?: string } })?.cause?.code;
+  return code === "23505";
+}
+
+function duplicateNameError(name: string, archivedOnly: boolean) {
+  return archivedOnly
+    ? `"${name}" already exists but is archived. Restore it from Show: Archived instead of adding it again.`
+    : `"${name}" is already in your parties. Open that one to edit it.`;
 }
 
 export async function createPartyAction(
@@ -69,31 +83,45 @@ export async function createPartyAction(
     };
   }
 
-  const { confirmDuplicate, ...data } = parsed.data;
+  const data = parsed.data;
 
-  if (!confirmDuplicate) {
-    const existing = await findPartiesByName(userId, data.name);
-    if (existing.length > 0) {
-      return {
-        values: readValues(formData),
-        submissionId: (_prevState?.submissionId ?? 0) + 1,
-        duplicateWarning: `A party named "${data.name}" already exists — add anyway?`,
-      };
-    }
+  // Refused, not warned. findPartiesByName matches case-insensitively, so
+  // "mayra" collides with "Mayra".
+  const existing = await findPartiesByName(userId, data.name);
+  if (existing.length > 0) {
+    return {
+      values: readValues(formData),
+      submissionId: (_prevState?.submissionId ?? 0) + 1,
+      fieldErrors: {
+        name: duplicateNameError(data.name, existing.every((p) => p.isArchived)),
+      },
+    };
   }
 
   // HTML forms submit empty optional inputs as "", not absent; storing ""
   // leaves visually-blank-but-present values in nullable columns.
-  const party = await createParty(userId, {
-    name: data.name,
-    ownerName1: data.ownerName1,
-    ownerName2: data.ownerName2 || null,
-    address: data.address || null,
-    gender: data.gender,
-    email: data.email || null,
-    contact1: data.contact1 || null,
-    contact2: data.contact2 || null,
-  });
+  let party;
+  try {
+    party = await createParty(userId, {
+      name: data.name,
+      ownerName1: data.ownerName1,
+      ownerName2: data.ownerName2 || null,
+      address: data.address || null,
+      gender: data.gender,
+      email: data.email || null,
+      contact1: data.contact1 || null,
+      contact2: data.contact2 || null,
+    });
+  } catch (err) {
+    if (isDuplicateName(err)) {
+      return {
+        values: readValues(formData),
+        submissionId: (_prevState?.submissionId ?? 0) + 1,
+        fieldErrors: { name: duplicateNameError(data.name, false) },
+      };
+    }
+    throw err;
+  }
 
   revalidatePath("/parties");
   return { success: true, newId: party.id };
@@ -128,8 +156,20 @@ export async function updatePartyAction(
   // confirmDuplicate is a create-only flag; strip it before persisting.
   const data = parsed.data;
 
-  // No duplicate check on update — renaming a party to an existing name is
-  // the owner correcting a spelling, not a mistaken second entry.
+  // A rename must not collide either, or the ban on duplicates would have a
+  // hole in it: add "Mayra Creation", then rename it to "Mayra". Self is
+  // excluded so re-saving a party without touching its name still works.
+  const clashes = (await findPartiesByName(userId, data.name)).filter((p) => p.id !== partyId);
+  if (clashes.length > 0) {
+    return {
+      values: readValues(formData),
+      submissionId: (_prevState?.submissionId ?? 0) + 1,
+      fieldErrors: {
+        name: duplicateNameError(data.name, clashes.every((p) => p.isArchived)),
+      },
+    };
+  }
+
   const party = await updateParty(userId, partyId, {
     name: data.name,
     ownerName1: data.ownerName1,

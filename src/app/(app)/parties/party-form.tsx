@@ -199,21 +199,6 @@ export function PartyForm({ party }: { party?: Party }) {
 
       </div>
 
-      {state?.duplicateWarning ? (
-        <div className="rounded-lg border border-warning/30 bg-warning/10 p-3">
-          <p className="text-sm text-warning-foreground">{state.duplicateWarning}</p>
-          <input type="hidden" name="confirmDuplicate" value="true" />
-          <div className="mt-3 flex gap-2">
-            <Button type="submit" className="h-10 px-4">
-              Add anyway
-            </Button>
-            <Button asChild variant="outline" className="h-10 px-4">
-              <Link href="/parties">Cancel</Link>
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <>
           {state?.error ? (
             <p role="alert" className="shrink-0 px-5 pb-3 text-sm text-destructive sm:px-6">
               {state.error}
@@ -225,8 +210,6 @@ export function PartyForm({ party }: { party?: Party }) {
             </Button>
             <SubmitButton label={party ? "Save changes" : "Add party"} />
           </div>
-        </>
-      )}
     </form>
   );
 }

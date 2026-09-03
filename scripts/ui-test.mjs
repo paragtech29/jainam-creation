@@ -20,7 +20,13 @@ const MODE = process.argv[2] || "test";
 // Letters only: a person name legitimately rejects digits.
 // The "ZZ Test" prefix is what `npm run seed:bulk -- --wipe` removes, so
 // rows this suite creates are cleaned up by that one command.
-const TAG = "ZZ Test QA " + (Math.random().toString(36).slice(2, 7).replace(/[^a-z]/gi, "") || "qa");
+// Six letters, always. A base-36 slice with non-letters stripped often
+// collapsed to the fallback, so two runs collided - and now that a duplicate
+// party name is REFUSED rather than warned about, that collision failed the
+// run instead of quietly passing.
+const TAG =
+  "ZZ Test QA " +
+  Array.from({ length: 6 }, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join("");
 
 const VIEWPORTS = {
   phone: { width: 390, height: 844 },
@@ -61,7 +67,10 @@ async function login(page) {
   await page.fill('input[name="username"]', USER);
   await page.fill('input[name="password"]', PASS);
   await page.click('button[type="submit"]');
-  await page.waitForTimeout(1600);
+  await page
+    .waitForURL((u) => !u.pathname.includes("/login"), { timeout: 30000 })
+    .catch(() => {});
+  await page.waitForTimeout(300);
   return !page.url().includes("/login");
 }
 
@@ -168,7 +177,49 @@ for (const [label, path, expectPager] of [
 console.log("\n--- PARTY VALIDATION ---");
 await page.goto(BASE + "/parties?new=1", { waitUntil: "domcontentloaded" });
 await page.waitForTimeout(1100);
-const addParty = () => page.locator('button:has-text("Add party")').last().click();
+// The submit button disables itself while the action is in flight
+// (useFormStatus). Clicking it while disabled silently does NOTHING, and the
+// error still on screen is the PREVIOUS one - which is exactly how this
+// suite fooled itself. So: wait until it is enabled, click, then wait for an
+// outcome rather than for a duration.
+// Waiting for "a field error exists" is WRONG here: the error from the
+// previous attempt already satisfies it, so the wait returns before the new
+// submission has even finished and the assertion then reads a stale message.
+// The submit button disables itself while the action is in flight
+// (useFormStatus), so its disabled -> enabled transition is an unambiguous
+// "this submission has settled", whatever the outcome or the message.
+//
+// Every fixed sleep in this suite has eventually failed a run: on a busy dev
+// server, or with more data seeded, the guessed duration runs out first. Wait
+// on the condition instead — always.
+const btnState = (label, want) =>
+  page
+    .waitForFunction(
+      ({ l, w }) => {
+        const b = [...document.querySelectorAll("button")]
+          .filter((x) => new RegExp(l, "i").test(x.textContent || ""))
+          .pop();
+        if (!b) return false;
+        return w === "disabled" ? b.disabled : !b.disabled;
+      },
+      { l: label, w: want },
+      { timeout: 25000 }
+    )
+    .catch(() => {});
+
+/** Click a form's submit button and return once that submission has settled. */
+const submitAndSettle = async (label) => {
+  await btnState(label, "enabled");
+  await page.locator(`button:has-text("${label}")`).last().click();
+  await btnState(label, "disabled");
+  await Promise.race([
+    page.waitForURL((u) => !u.search.includes("new=1"), { timeout: 25000 }),
+    btnState(label, "enabled"),
+  ]).catch(() => {});
+  await page.waitForTimeout(400);
+};
+
+const addParty = () => submitAndSettle("Add party");
 
 await addParty();
 await page.waitForTimeout(1800);
@@ -214,15 +265,68 @@ check("a failed submit keeps every other field",
 
 await page.fill('input[name="contact1"]', "9876598765");
 await addParty();
-await page.waitForTimeout(3000);
-check("fixing the one flagged field saves the party",
-  !(await page.isVisible('input[name="name"]').catch(() => false)), page.url());
+await Promise.race([
+  page.waitForURL((u) => !u.search.includes("new=1"), { timeout: 20000 }),
+  page.waitForSelector('[data-slot="field-error"]', { timeout: 20000 }),
+]).catch(() => {});
+await page.waitForTimeout(600);
+{
+  const savedOk = !(await page.isVisible('input[name="name"]').catch(() => false));
+  check("fixing the one flagged field saves the party", savedOk,
+    savedOk ? page.url() : (await errs()).join(" | ") + " @ " + page.url());
+}
+
+// ────────────────── a party name must be unique ──────────────────
+// Two parties with the same name make the job work dropdown ambiguous and the
+// per-party earnings figure meaningless. This used to WARN and offer "add
+// anyway"; it now refuses. The unique index in drizzle/0002 is the real
+// guarantee — the pre-check just gives a nicer message first.
+console.log("\n--- A PARTY NAME MUST BE UNIQUE ---");
+{
+  const fillParty = async (name, owner, coOwner, c1, c2) => {
+    await page.goto(BASE + "/parties?new=1", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(1100);
+    await page.fill('input[name="name"]', name);
+    await page.fill('input[name="ownerName1"]', owner);
+    if (coOwner) await page.fill('input[name="ownerName2"]', coOwner);
+    await page.fill('input[name="contact1"]', c1);
+    if (c2) await page.fill('input[name="contact2"]', c2);
+    await page.click('[id="gender"]');
+    await page.waitForTimeout(400);
+    await page.click('[role="option"]:has-text("Male")');
+    await page.waitForTimeout(300);
+    await addParty();
+    return {
+      saved: !(await page.isVisible('input[name="name"]').catch(() => false)),
+      errors: await errs(),
+    };
+  };
+
+  // Create one, then try to create it again.
+  const unique = TAG + " Unique";
+  let r = await fillParty(unique, "First Owner", "", "9876500601", "");
+  check("a new party saves", r.saved, r.errors.join(" | "));
+
+  r = await fillParty(unique, "Second Owner", "", "9876500602", "");
+  check("the same party name is refused", !r.saved, r.errors.join(" | "));
+  check("and no 'add anyway' escape is offered",
+    !(await page.evaluate(() => /add anyway/i.test(document.body.innerText))));
+
+  r = await fillParty(unique.toUpperCase(), "Third Owner", "", "9876500603", "");
+  check("a different casing is still a duplicate", !r.saved, r.errors.join(" | "));
+
+  r = await fillParty(TAG + " SamePerson", "Amba bhai", "  amba BHAI ", "9876500604", "");
+  check("owner and co-owner cannot be the same person", !r.saved, r.errors.join(" | "));
+
+  r = await fillParty(TAG + " SamePhone", "Ravi bhai", "", "9876500605", "98765 00605");
+  check("the alternate number cannot repeat the mobile", !r.saved, r.errors.join(" | "));
+}
 
 // ─────────────────────────── karigar validation ───────────────────────────
 console.log("\n--- KARIGAR VALIDATION ---");
 await page.goto(BASE + "/karigars?new=1", { waitUntil: "domcontentloaded" });
 await page.waitForTimeout(1100);
-const addKarigar = () => page.locator('button:has-text("Add karigar")').last().click();
+const addKarigar = () => submitAndSettle("Add karigar");
 
 await addKarigar();
 await page.waitForTimeout(1800);
@@ -260,7 +364,8 @@ console.log("\n--- CLEARING A SEARCH ---");
   await page.goto(BASE + "/parties", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(800);
   await page.fill('input[type="search"]', "zzzzz");
-  await page.waitForTimeout(1400);
+  await page.waitForURL((u) => u.search.includes("q=zzzzz"), { timeout: 20000 }).catch(() => {});
+  await page.waitForTimeout(500);
   let body = await page.evaluate(() => document.body.innerText);
   check("a search with no hits shows the no-match state", /No parties match/.test(body));
   check("the no-match card carries no Clear button", !/Clear search and filters/.test(body));
@@ -280,7 +385,8 @@ console.log("\n--- CLEARING A SEARCH ---");
   await page.goto(BASE + "/job-work", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(900);
   await page.fill('input[type="search"]', "qqqqq");
-  await page.waitForTimeout(1400);
+  await page.waitForURL((u) => u.search.includes("q=qqqqq"), { timeout: 20000 }).catch(() => {});
+  await page.waitForTimeout(500);
   const clearAll = page.locator('button:has-text("Clear all")');
   if (await clearAll.count()) {
     await clearAll.first().click();

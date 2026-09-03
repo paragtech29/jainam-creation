@@ -15,6 +15,13 @@
       "when": 1788243343448,
       "tag": "0001_rename_particulars_to_description_types",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788330000000,
+      "tag": "0002_unique_party_name_per_user",
+      "breakpoints": true
     }
   ]
 }

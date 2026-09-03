@@ -19,7 +19,8 @@
     "seed:bulk": "tsx --env-file=.env.local scripts/seed-bulk.ts",
     "ui:test": "node scripts/ui-test.mjs test",
     "ui:shots": "node scripts/ui-test.mjs shots",
-    "tidy:test": "tsx --env-file=.env.local scripts/tidy-test-rows.ts"
+    "tidy:test": "tsx --env-file=.env.local scripts/tidy-test-rows.ts",
+    "ui:e2e": "node scripts/ui-e2e.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

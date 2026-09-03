@@ -105,7 +105,7 @@ export default async function JobWorkPage({
                 billed: sp.billed,
               }}
             />
-            <span className="text-[12.5px] text-secondary-foreground">
+            <span className="border-l border-border pl-4 text-[12.5px] text-secondary-foreground">
               Total this view{" "}
               <strong className="font-mono font-semibold tabular-nums text-foreground">
                 ₹{grandTotal.toLocaleString("en-IN")}

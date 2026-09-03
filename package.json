@@ -16,7 +16,10 @@
     "verify:money": "tsx --env-file=.env.local scripts/verify-job-work-money.ts",
     "reset:data": "tsx --env-file=.env.local scripts/reset-data.ts",
     "verify:validation": "tsx --env-file=.env.local scripts/verify-validation.ts",
-    "seed:bulk": "tsx --env-file=.env.local scripts/seed-bulk.ts"
+    "seed:bulk": "tsx --env-file=.env.local scripts/seed-bulk.ts",
+    "ui:test": "node scripts/ui-test.mjs test",
+    "ui:shots": "node scripts/ui-test.mjs shots",
+    "tidy:test": "tsx --env-file=.env.local scripts/tidy-test-rows.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
@@ -50,6 +53,7 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
+    "playwright": "^1.58.2",
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
     "typescript": "^5"

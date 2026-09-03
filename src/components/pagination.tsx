@@ -42,7 +42,7 @@ export function Pagination({
     <div
       data-slot="pagination"
       className={cn(
-        "flex shrink-0 flex-col items-center justify-between gap-3 border-t border-border bg-background pt-3.5 sm:flex-row",
+        "flex shrink-0 flex-col items-center justify-between gap-3 border-t border-border pt-3.5 sm:flex-row",
         className
       )}
     >

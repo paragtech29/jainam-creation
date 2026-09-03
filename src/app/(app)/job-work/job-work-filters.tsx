@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import { SearchInput } from "@/components/search-input";
 import { SimpleSelect } from "@/components/ui/simple-select";
 
@@ -31,7 +33,10 @@ export function JobWorkFilters({
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }
 
-  const active = ["q", "from", "to", "party", "karigar", "status", "billed"].some((k) => get(k));
+  const [open, setOpen] = useState(false);
+
+  const activeKeys = ["q", "from", "to", "party", "karigar", "status", "billed"].filter((k) => get(k));
+  const active = activeKeys.length > 0;
 
   const field = "h-10 rounded-[10px] border border-input bg-card px-2.5 text-[13.5px] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring";
   const label = "text-xs font-medium text-secondary-foreground";
@@ -39,9 +44,25 @@ export function JobWorkFilters({
   return (
     <div className="flex flex-col gap-3 rounded-[14px] border border-border bg-card p-[14px_16px]">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className="text-[11px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-controls="job-work-filter-fields"
+          className="-m-1 flex items-center gap-1.5 rounded p-1 text-[11px] font-medium uppercase tracking-[0.11em] text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:pointer-events-none"
+        >
           Filters
-        </span>
+          {active ? (
+            <span className="rounded-full bg-accent px-1.5 py-px text-[10px] font-semibold tracking-normal text-brand-dark">
+              {activeKeys.length}
+            </span>
+          ) : null}
+          <ChevronDown
+            size={13}
+            aria-hidden="true"
+            className={`transition-transform sm:hidden ${open ? "rotate-180" : ""}`}
+          />
+        </button>
         {active ? (
           <button
             type="button"
@@ -53,7 +74,10 @@ export function JobWorkFilters({
         ) : null}
       </div>
 
-      <div className="flex flex-wrap items-end gap-x-3 gap-y-2.5">
+      <div
+        id="job-work-filter-fields"
+        className={`flex-wrap items-end gap-x-3 gap-y-2.5 sm:flex ${open ? "flex" : "hidden"}`}
+      >
         {/* Search sits with the other filters rather than floating above them —
             it is the same act, narrowing the list. Given two columns because
             a chalan or design number needs the room. */}

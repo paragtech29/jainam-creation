@@ -251,7 +251,7 @@ export function DescriptionRows({
       </div>
 
       {error ? (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" data-slot="field-error" className="text-xs text-destructive">
           {error}
         </p>
       ) : null}

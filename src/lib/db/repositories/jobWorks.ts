@@ -179,7 +179,7 @@ export async function listJobWorksPage(
     pageSize?: number;
   } = {}
 ): Promise<{ rows: JobWorkListRow[]; total: number; grandTotal: number }> {
-  const { search = "", from, to, partyId, karigarId, status, billed, page = 1, pageSize = 20 } = opts;
+  const { search = "", from, to, partyId, karigarId, status, billed, page = 1, pageSize = 10 } = opts;
   const term = search.trim();
 
   const where = and(

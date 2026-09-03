@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/empty-state";
 import { JobWorkFilters } from "./job-work-filters";
 import { JobWorkList } from "./job-work-list";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 export default async function JobWorkPage({
   searchParams,
@@ -50,7 +50,7 @@ export default async function JobWorkPage({
     Boolean(search) || Boolean(sp.from || sp.to || sp.party || sp.karigar || sp.status || sp.billed);
 
   return (
-    <div className="flex flex-1 flex-col gap-3.5">
+    <div className="flex min-h-0 flex-1 flex-col gap-3.5">
 
       <JobWorkFilters
         parties={parties.map((p) => ({ id: p.id, name: p.name }))}
@@ -84,11 +84,14 @@ export default async function JobWorkPage({
         )
       ) : (
         <>
-          <JobWorkList rows={rows} highlight={sp.highlight} />
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <JobWorkList rows={rows} highlight={sp.highlight} />
+          </div>
 
           {/* Summed in SQL across the whole filtered set, not just this page. */}
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-[14px] border border-border bg-card px-[18px] py-3">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-[14px] border border-border bg-card px-[18px] py-3">
             <Pagination
+              className="flex-1 border-t-0 pt-0"
               page={page}
               pageSize={PAGE_SIZE}
               total={total}

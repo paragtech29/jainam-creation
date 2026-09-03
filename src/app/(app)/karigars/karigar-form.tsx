@@ -72,7 +72,7 @@ export function KarigarForm({
               id="name"
               name="name"
               placeholder="Karigar's full name"
-              defaultValue={karigar?.name}
+              defaultValue={state?.values?.name ?? karigar?.name ?? ""}
               required
               minLength={2}
               maxLength={80}
@@ -95,7 +95,7 @@ export function KarigarForm({
               rows={2}
               maxLength={500}
               placeholder="Shop / street / area, city"
-              defaultValue={karigar?.address ?? undefined}
+              defaultValue={state?.values?.address ?? karigar?.address ?? undefined}
               className="min-h-[62px] resize-y"
             />
             <FieldError errors={[{ message: state?.fieldErrors?.address }]} />
@@ -113,7 +113,7 @@ export function KarigarForm({
               pattern="[0-9+() -]{10,20}"
               maxLength={20}
               title="Numbers only — 10 to 15 digits. Spaces, + - and brackets are allowed."
-              defaultValue={karigar?.contact1 ?? undefined}
+              defaultValue={state?.values?.contact1 ?? karigar?.contact1 ?? undefined}
               className="h-[42px]"
             />
             <FieldError errors={[{ message: state?.fieldErrors?.contact1 }]} />
@@ -131,7 +131,7 @@ export function KarigarForm({
               pattern="[0-9+() -]{10,20}"
               maxLength={20}
               title="Numbers only — 10 to 15 digits. Spaces, + - and brackets are allowed."
-              defaultValue={karigar?.contact2 ?? undefined}
+              defaultValue={state?.values?.contact2 ?? karigar?.contact2 ?? undefined}
               className="h-[42px]"
             />
             <FieldError errors={[{ message: state?.fieldErrors?.contact2 }]} />

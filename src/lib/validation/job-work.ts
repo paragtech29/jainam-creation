@@ -1,6 +1,7 @@
 // Shared client/server validation schema for the Job Work form (money layer).
 // Used identically by the client form and the Server Actions (03-02/03-04/03-05).
 import { z } from "zod";
+import { requiredChoice } from "./common";
 
 // FormData posting contract for <Select>
 // CONFIRMED FROM SOURCE (node_modules/@radix-ui/react-select/dist/index.mjs,
@@ -29,9 +30,9 @@ export const descriptionLineSchema = z.object({
 });
 
 export const jobWorkSchema = z.object({
-  date: z.string().min(1, "Please choose a date"),
-  partyId: z.string().min(1, "Please choose a party"),
-  karigarId: z.string().min(1, "Please choose a silai karigar"),
+  date: requiredChoice("Please choose a date"),
+  partyId: requiredChoice("Please choose a party"),
+  karigarId: requiredChoice("Please choose a silai karigar"),
   pieces: z
     .string()
     .trim()

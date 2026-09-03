@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
+import { Req } from "@/components/required-mark";
 import { useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,9 +31,9 @@ export function ChangePasswordForm() {
   }, [state?.success]);
 
   return (
-    <form ref={formRef} action={formAction} className="flex flex-col gap-4">
+    <form ref={formRef} action={formAction} noValidate className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="oldPassword">Current password</Label>
+        <Label htmlFor="oldPassword">Current password <Req /></Label>
         <Input
           id="oldPassword"
           name="oldPassword"
@@ -42,13 +43,13 @@ export function ChangePasswordForm() {
           className="h-11 text-base"
         />
         {state?.fieldErrors?.oldPassword ? (
-          <p role="alert" className="text-sm text-destructive">
+          <p role="alert" data-slot="field-error" className="text-xs text-destructive">
             {state.fieldErrors.oldPassword}
           </p>
         ) : null}
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="newPassword">New password</Label>
+        <Label htmlFor="newPassword">New password <Req /></Label>
         <Input
           id="newPassword"
           name="newPassword"
@@ -58,13 +59,13 @@ export function ChangePasswordForm() {
           className="h-11 text-base"
         />
         {state?.fieldErrors?.newPassword ? (
-          <p role="alert" className="text-sm text-destructive">
+          <p role="alert" data-slot="field-error" className="text-xs text-destructive">
             {state.fieldErrors.newPassword}
           </p>
         ) : null}
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="confirmPassword">Confirm new password</Label>
+        <Label htmlFor="confirmPassword">Confirm new password <Req /></Label>
         <Input
           id="confirmPassword"
           name="confirmPassword"
@@ -74,13 +75,13 @@ export function ChangePasswordForm() {
           className="h-11 text-base"
         />
         {state?.fieldErrors?.confirmPassword ? (
-          <p role="alert" className="text-sm text-destructive">
+          <p role="alert" data-slot="field-error" className="text-xs text-destructive">
             {state.fieldErrors.confirmPassword}
           </p>
         ) : null}
       </div>
       {state?.error ? (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" data-slot="field-error" className="text-xs text-destructive">
           {state.error}
         </p>
       ) : null}

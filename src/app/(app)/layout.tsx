@@ -44,17 +44,17 @@ export default async function AppLayout({
   const profile = <SidebarProfile username={user.username} logoutAction={logout} />;
 
   return (
-    <div className="flex min-h-svh bg-background">
+    <div className="flex h-svh overflow-hidden bg-background">
       <aside className="sticky top-0 hidden h-svh w-[238px] shrink-0 flex-col gap-6 bg-sidebar p-[20px_14px] lg:flex">
         <BrandLockup onDark />
         <NavLinks counts={counts} />
         {profile}
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <PageHeaderBar mobileNav={<MobileNav counts={counts} profile={profile} />} />
 
-        <main className="flex w-full flex-1 flex-col px-[22px] pb-[22px] pt-[22px]">
+        <main className="flex min-h-0 w-full flex-1 flex-col overflow-hidden px-[22px] pb-[22px] pt-[22px]">
           {children}
         </main>
       </div>

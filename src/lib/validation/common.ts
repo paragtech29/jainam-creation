@@ -93,3 +93,16 @@ export function optionalPersonName(label: string) {
 export function optionalText(label: string, max = 500) {
   return z.union([z.literal(""), z.string().trim().max(max, `${label} is too long`)]);
 }
+
+/**
+ * A required dropdown or date. A disabled or unmounted <select> posts NOTHING,
+ * so the key is absent from FormData and a plain z.string() reports
+ * "Invalid input: expected string, received undefined" straight to the owner.
+ * Coercing a missing value to "" first means the friendly message wins.
+ */
+export function requiredChoice(message: string) {
+  return z.preprocess(
+    (v) => (typeof v === "string" ? v.trim() : ""),
+    z.string().min(1, message)
+  );
+}

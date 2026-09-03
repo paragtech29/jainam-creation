@@ -65,10 +65,10 @@ export function JobWorkList({
       </ul>
 
       {/* Laptop */}
-      <div className="hidden overflow-hidden rounded-lg border border-border bg-card shadow-card md:block">
+      <div className="hidden rounded-lg border border-border bg-card shadow-card md:block">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border bg-muted/40 text-left">
+            <tr className="sticky top-0 z-10 border-b border-border bg-muted text-left shadow-[0_1px_0_var(--border)]">
               <th className="h-11 px-4 font-medium text-muted-foreground">Date</th>
               <th className="h-11 px-4 font-medium text-muted-foreground">Party</th>
               <th className="h-11 px-4 font-medium text-muted-foreground">Karigar</th>

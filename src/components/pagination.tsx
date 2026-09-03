@@ -9,14 +9,19 @@ export function Pagination({
   pageSize,
   total,
   baseParams,
+  className,
 }: {
   page: number;
   pageSize: number;
   total: number;
   baseParams: Record<string, string | undefined>;
+  /** Job work embeds the pager in its own totals bar. */
+  className?: string;
 }) {
   const lastPage = Math.max(1, Math.ceil(total / pageSize));
-  if (total === 0) return null;
+  // Nothing to page through: a single page of results does not need a
+  // pager, and "Showing 1-3 of 3" under three rows is just noise.
+  if (total <= pageSize) return null;
 
   const href = (p: number) => {
     const q = new URLSearchParams();
@@ -34,7 +39,13 @@ export function Pagination({
   const disabled = "pointer-events-none opacity-40";
 
   return (
-    <div className="flex flex-col items-center justify-between gap-3 border-t border-border pt-4 sm:flex-row">
+    <div
+      data-slot="pagination"
+      className={cn(
+        "flex shrink-0 flex-col items-center justify-between gap-3 border-t border-border bg-background pt-3.5 sm:flex-row",
+        className
+      )}
+    >
       <p className="text-xs text-muted-foreground">
         Showing <span className="font-medium text-foreground tabular-nums">{from}</span>–
         <span className="font-medium text-foreground tabular-nums">{to}</span> of{" "}

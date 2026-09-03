@@ -51,7 +51,7 @@ export default async function DashboardPage() {
   const recent = rows.slice(0, 6);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="min-h-0 flex-1 overflow-y-auto flex flex-col gap-4">
       <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(186px,1fr))]">
         {tiles.map((t) => (
           <div

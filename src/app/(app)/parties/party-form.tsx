@@ -68,7 +68,7 @@ export function PartyForm({ party }: { party?: Party }) {
             // ("3 Star Creation") but not on their own.
             pattern="(?=.*[A-Za-z-￿]).{2,}"
             title="At least 2 characters, and must contain letters — not only numbers"
-            defaultValue={party?.name}
+            defaultValue={state?.values?.name ?? party?.name ?? ""}
             className="h-[42px]"
           />
           <FieldError errors={[{ message: state?.fieldErrors?.name }]} />
@@ -89,7 +89,7 @@ export function PartyForm({ party }: { party?: Party }) {
             maxLength={80}
             pattern="[A-Za-z-￿ .'-]{2,}"
             title="Letters, spaces, dots, hyphens and apostrophes only — no numbers"
-            defaultValue={party?.ownerName1}
+            defaultValue={state?.values?.ownerName1 ?? party?.ownerName1 ?? ""}
             className="h-[42px]"
           />
           <FieldError errors={[{ message: state?.fieldErrors?.ownerName1 }]} />
@@ -104,7 +104,7 @@ export function PartyForm({ party }: { party?: Party }) {
             maxLength={80}
             pattern="[A-Za-z-￿ .'-]{2,}"
             title="Letters, spaces, dots, hyphens and apostrophes only — no numbers"
-            defaultValue={party?.ownerName2 ?? ""}
+            defaultValue={state?.values?.ownerName2 ?? party?.ownerName2 ?? ""}
             className="h-[42px]"
           />
           <FieldError errors={[{ message: state?.fieldErrors?.ownerName2 }]} />
@@ -122,7 +122,7 @@ export function PartyForm({ party }: { party?: Party }) {
             rows={2}
             maxLength={500}
             placeholder="Shop / street / area, city"
-            defaultValue={party?.address ?? ""}
+            defaultValue={state?.values?.address ?? party?.address ?? ""}
             className="min-h-[62px] resize-y"
           />
           <FieldError errors={[{ message: state?.fieldErrors?.address }]} />
@@ -130,9 +130,10 @@ export function PartyForm({ party }: { party?: Party }) {
         <Field>
           <FieldLabel htmlFor="gender">Gender <Req /></FieldLabel>
           <SimpleSelect
+            key={state?.submissionId ?? 0}
             id="gender"
             name="gender"
-            value={gender}
+            value={gender || (state?.values?.gender ?? "")}
             onValueChange={setGender}
             placeholder="Choose gender"
             fullWidth
@@ -151,7 +152,7 @@ export function PartyForm({ party }: { party?: Party }) {
             name="email"
             placeholder="name@example.com"
             type="email"
-            defaultValue={party?.email ?? ""}
+            defaultValue={state?.values?.email ?? party?.email ?? ""}
             className="h-[42px]"
           />
           <FieldError errors={[{ message: state?.fieldErrors?.email }]} />
@@ -170,7 +171,7 @@ export function PartyForm({ party }: { party?: Party }) {
             pattern="[0-9+() -]{10,20}"
             maxLength={20}
             title="Numbers only — 10 to 15 digits. Spaces, + - and brackets are allowed."
-            defaultValue={party?.contact1 ?? ""}
+            defaultValue={state?.values?.contact1 ?? party?.contact1 ?? ""}
             className="h-[42px]"
           />
           <FieldError errors={[{ message: state?.fieldErrors?.contact1 }]} />
@@ -188,7 +189,7 @@ export function PartyForm({ party }: { party?: Party }) {
             pattern="[0-9+() -]{10,20}"
             maxLength={20}
             title="Numbers only — 10 to 15 digits. Spaces, + - and brackets are allowed."
-            defaultValue={party?.contact2 ?? ""}
+            defaultValue={state?.values?.contact2 ?? party?.contact2 ?? ""}
             className="h-[42px]"
           />
           <FieldError errors={[{ message: state?.fieldErrors?.contact2 }]} />

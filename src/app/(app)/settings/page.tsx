@@ -5,7 +5,7 @@ import { ChangePasswordForm } from "./change-password-form";
 // no extra guard needed here. The only setting in v1 is the password.
 export default function SettingsPage() {
   return (
-    <div className="mx-auto flex w-full max-w-sm flex-col gap-4 px-4 py-8">
+    <div className="min-h-0 flex-1 overflow-y-auto mx-auto flex w-full max-w-sm flex-col gap-4 px-4 py-8">
       <Card className="w-full">
         <CardHeader>
           <CardTitle className="text-xl">Change password</CardTitle>

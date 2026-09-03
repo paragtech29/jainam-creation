@@ -52,7 +52,7 @@ export async function listKarigarsPage(
     pageSize?: number;
   } = {}
 ): Promise<{ rows: KarigarListRow[]; total: number }> {
-  const { search = "", includeArchived = false, archivedOnly = false, page = 1, pageSize = 20 } = opts;
+  const { search = "", includeArchived = false, archivedOnly = false, page = 1, pageSize = 10 } = opts;
   const term = search.trim();
 
   const where = and(

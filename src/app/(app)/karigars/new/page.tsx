@@ -9,7 +9,7 @@ export default async function NewKarigarPage() {
   const parties = await listParties(userId);
 
   return (
-    <div className="space-y-5">
+    <div className="min-h-0 flex-1 overflow-y-auto space-y-5">
       <div>
         <Link
           href="/karigars"

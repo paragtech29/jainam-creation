@@ -15,7 +15,8 @@
     "seed:masters": "tsx --env-file=.env.local scripts/seed-masters.ts",
     "verify:money": "tsx --env-file=.env.local scripts/verify-job-work-money.ts",
     "reset:data": "tsx --env-file=.env.local scripts/reset-data.ts",
-    "verify:validation": "tsx --env-file=.env.local scripts/verify-validation.ts"
+    "verify:validation": "tsx --env-file=.env.local scripts/verify-validation.ts",
+    "seed:bulk": "tsx --env-file=.env.local scripts/seed-bulk.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

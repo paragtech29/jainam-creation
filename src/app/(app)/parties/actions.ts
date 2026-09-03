@@ -20,9 +20,27 @@ export type PartyFormState =
       fieldErrors?: Partial<Record<keyof PartyInput, string>>;
       duplicateWarning?: string;
       success?: boolean;
+      /** Echo of the submitted strings - see readValues(). */
+      values?: Record<string, string>;
+      /** Bumped per attempt so controlled dropdowns re-key. */
+      submissionId?: number;
       newId?: string;
     }
   | undefined;
+
+// React 19 resets a form after its action completes, so the form re-reads
+// every defaultValue. Echoing the submitted strings back lets defaultValue
+// land on what the person typed instead of on an empty create form.
+const ECHO_FIELDS = ["name", "ownerName1", "ownerName2", "contact1", "contact2", "gender", "address", "email"] as const;
+
+function readValues(formData: FormData): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const k of ECHO_FIELDS) {
+    const v = formData.get(k);
+    if (typeof v === "string") out[k] = v;
+  }
+  return out;
+}
 
 export async function createPartyAction(
   _prevState: PartyFormState,
@@ -36,6 +54,8 @@ export async function createPartyAction(
   if (!parsed.success) {
     const flattened = parsed.error.flatten().fieldErrors;
     return {
+      values: readValues(formData),
+      submissionId: (_prevState?.submissionId ?? 0) + 1,
       fieldErrors: {
         name: flattened.name?.[0],
         ownerName1: flattened.ownerName1?.[0],
@@ -55,6 +75,8 @@ export async function createPartyAction(
     const existing = await findPartiesByName(userId, data.name);
     if (existing.length > 0) {
       return {
+        values: readValues(formData),
+        submissionId: (_prevState?.submissionId ?? 0) + 1,
         duplicateWarning: `A party named "${data.name}" already exists — add anyway?`,
       };
     }
@@ -88,6 +110,8 @@ export async function updatePartyAction(
   if (!parsed.success) {
     const flattened = parsed.error.flatten().fieldErrors;
     return {
+      values: readValues(formData),
+      submissionId: (_prevState?.submissionId ?? 0) + 1,
       fieldErrors: {
         name: flattened.name?.[0],
         ownerName1: flattened.ownerName1?.[0],

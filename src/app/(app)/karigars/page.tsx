@@ -10,7 +10,7 @@ import { RecordDialog } from "@/components/record-dialog";
 import { KarigarForm } from "./karigar-form";
 import { listParties } from "@/lib/db/repositories/parties";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 export default async function KarigarsPage({
   searchParams,
@@ -43,7 +43,7 @@ export default async function KarigarsPage({
   const filtering = Boolean(search) || archivedMode !== "active";
 
   return (
-    <div className="flex flex-1 flex-col gap-5">
+    <div className="flex min-h-0 flex-1 flex-col gap-5">
       {sp.new === "1" ? (
         <RecordDialog
           title="Add karigar"
@@ -90,7 +90,9 @@ export default async function KarigarsPage({
         )
       ) : (
         <>
-          <KarigarList karigars={rows} highlight={sp.highlight} />
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <KarigarList karigars={rows} highlight={sp.highlight} />
+          </div>
           <Pagination
             page={page}
             pageSize={PAGE_SIZE}

@@ -366,7 +366,9 @@ export function JobWorkForm({
                 inputMode="numeric"
                 min="1"
                 step="1"
+                max="1000000"
                 required
+                title="Whole number of pieces, at least 1"
                 value={draft.pieces}
                 onChange={(e) => setDraft((d) => ({ ...d, pieces: e.target.value }))}
                 className="h-[42px] text-right font-mono tabular-nums"
@@ -384,6 +386,9 @@ export function JobWorkForm({
                   id="rate"
                   name="rate"
                   inputMode="numeric"
+                  pattern="[0-9]*"
+                  required
+                  title="Whole rupees, at least 1"
                   value={rateHook.rate}
                   onChange={(e) => rateHook.onRateChange(e.target.value)}
                   className="h-[42px] pl-6 text-right font-mono tabular-nums"
@@ -441,7 +446,8 @@ export function JobWorkForm({
               name="chalanNo"
               inputMode="numeric"
               pattern="[0-9]*"
-              value={draft.chalanNo}
+              maxLength={20}
+              title="Numbers only"              value={draft.chalanNo}
               onChange={(e) => setDraft((d) => ({ ...d, chalanNo: e.target.value }))}
               className="h-[42px] font-mono tabular-nums"
             />
@@ -459,7 +465,8 @@ export function JobWorkForm({
                 name="partyDesignNo"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                value={draft.partyDesignNo}
+                maxLength={20}
+                title="Numbers only"                value={draft.partyDesignNo}
                 onChange={(e) => setDraft((d) => ({ ...d, partyDesignNo: e.target.value }))}
                 className="h-[42px] font-mono tabular-nums"
               />
@@ -472,7 +479,8 @@ export function JobWorkForm({
                 name="computerDesignNo"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                value={draft.computerDesignNo}
+                maxLength={20}
+                title="Numbers only"                value={draft.computerDesignNo}
                 onChange={(e) => setDraft((d) => ({ ...d, computerDesignNo: e.target.value }))}
                 className="h-[42px] font-mono tabular-nums"
               />

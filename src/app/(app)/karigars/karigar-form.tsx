@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Field,
   FieldContent,
@@ -72,6 +73,10 @@ export function KarigarForm({
               name="name"
               defaultValue={karigar?.name}
               required
+              minLength={2}
+              maxLength={80}
+              pattern="[A-Za-z-￿ .'-]{2,}"
+              title="Letters, spaces, dots, hyphens and apostrophes only — no numbers"
               className="h-[42px]"
             />
             <FieldError errors={[{ message: state?.fieldErrors?.name }]} />
@@ -81,13 +86,16 @@ export function KarigarForm({
 
         <FieldSet>
           <div className="grid gap-x-4 gap-y-4 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
-          <Field>
+          <Field className="[grid-column:1/-1]">
             <FieldLabel htmlFor="address">Address</FieldLabel>
-            <Input
+            <Textarea
               id="address"
               name="address"
+              rows={2}
+              maxLength={500}
+              placeholder="Shop / street / area, city"
               defaultValue={karigar?.address ?? undefined}
-              className="h-[42px]"
+              className="min-h-[62px] resize-y"
             />
             <FieldError errors={[{ message: state?.fieldErrors?.address }]} />
           </Field>
@@ -98,6 +106,10 @@ export function KarigarForm({
                 id="contact1"
                 name="contact1"
                 type="tel"
+                inputMode="tel"
+                pattern="[0-9+-s()]{10,20}"
+                maxLength={20}
+                title="Numbers only — 10 to 15 digits. Spaces, + - and brackets are allowed."
                 defaultValue={karigar?.contact1 ?? undefined}
                 className="h-[42px]"
               />
@@ -109,6 +121,10 @@ export function KarigarForm({
                 id="contact2"
                 name="contact2"
                 type="tel"
+                inputMode="tel"
+                pattern="[0-9+-s()]{10,20}"
+                maxLength={20}
+                title="Numbers only — 10 to 15 digits. Spaces, + - and brackets are allowed."
                 defaultValue={karigar?.contact2 ?? undefined}
                 className="h-[42px]"
               />

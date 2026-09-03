@@ -16,16 +16,16 @@ import { parties, silaiKarigars, descriptionTypes, partyKarigars } from "../src/
 import { getUserByUsername } from "../src/lib/db/repositories/users";
 
 const PARTIES = [
-  { name: "Mayra", ownerName1: "Mayra bhai", address: "Surat, Gujarat", email: "mayra@example.com", contact1: "9876500001", contact2: "9876500002" },
-  { name: "Amba", ownerName1: "Amba bhai" },
-  { name: "Jignesh bhai", ownerName1: "Jignesh" },
+  { name: "Mayra", ownerName1: "Mayra bhai", address: "Surat, Gujarat", email: "mayra@example.com", gender: "male", contact1: "9876500001", contact2: "9876500002" },
+  { name: "Amba", ownerName1: "Amba bhai", gender: "male", contact1: "9876500011" },
+  { name: "Jignesh bhai", ownerName1: "Jignesh", gender: "male", contact1: "9876500021" },
 ];
 
 const KARIGARS = [
   { name: "Zuber", contact1: "9876511111" },
-  { name: "Alfaz" },
-  { name: "Abdul bhai" },
-  { name: "Kamlesh" },
+  { name: "Alfaz", contact1: "9876511122" },
+  { name: "Abdul bhai", contact1: "9876511133" },
+  { name: "Kamlesh", contact1: "9876511144" },
 ];
 
 // The kinds of work that appear on a job work's description lines. English,

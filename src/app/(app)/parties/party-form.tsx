@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SimpleSelect } from "@/components/ui/simple-select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Field,
   FieldContent,
@@ -33,9 +34,10 @@ function SubmitButton({ label }: { label: string }) {
 
 export function PartyForm({ party }: { party?: Party }) {
   const router = useRouter();
-  // Radix Select cannot hold "" as a value, so "not specified" travels as a
-  // sentinel. The server action maps it back to null — see partySchema.
-  const [gender, setGender] = useState(party?.gender ?? "unspecified");
+  // Gender is required. It starts empty so the schema's "Choose a gender"
+  // actually fires on a blank submit, rather than a default silently
+  // satisfying it.
+  const [gender, setGender] = useState(party?.gender ?? "");
   const action = party ? updatePartyAction.bind(null, party.id) : createPartyAction;
   const [state, formAction] = useActionState<PartyFormState, FormData>(action, undefined);
 
@@ -59,6 +61,12 @@ export function PartyForm({ party }: { party?: Party }) {
             id="name"
             name="name"
             required
+            minLength={2}
+            maxLength={120}
+            // Must contain a letter. Digits are fine inside a business name
+            // ("3 Star Creation") but not on their own.
+            pattern="(?=.*[A-Za-z-￿]).{2,}"
+            title="At least 2 characters, and must contain letters — not only numbers"
             defaultValue={party?.name}
             className="h-[42px]"
           />
@@ -75,6 +83,10 @@ export function PartyForm({ party }: { party?: Party }) {
             id="ownerName1"
             name="ownerName1"
             required
+            minLength={2}
+            maxLength={80}
+            pattern="[A-Za-z-￿ .'-]{2,}"
+            title="Letters, spaces, dots, hyphens and apostrophes only — no numbers"
             defaultValue={party?.ownerName1}
             className="h-[42px]"
           />
@@ -85,23 +97,32 @@ export function PartyForm({ party }: { party?: Party }) {
           <Input
             id="ownerName2"
             name="ownerName2"
+            minLength={2}
+            maxLength={80}
+            pattern="[A-Za-z-￿ .'-]{2,}"
+            title="Letters, spaces, dots, hyphens and apostrophes only — no numbers"
             defaultValue={party?.ownerName2 ?? ""}
             className="h-[42px]"
           />
+          <FieldError errors={[{ message: state?.fieldErrors?.ownerName2 }]} />
         </Field>
       </div>
       </FieldSet>
 
       <FieldSet>
         <div className="grid gap-x-4 gap-y-4 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
-        <Field>
+        <Field className="[grid-column:1/-1]">
           <FieldLabel htmlFor="address">Address</FieldLabel>
-          <Input
+          <Textarea
             id="address"
             name="address"
+            rows={2}
+            maxLength={500}
+            placeholder="Shop / street / area, city"
             defaultValue={party?.address ?? ""}
-            className="h-[42px]"
+            className="min-h-[62px] resize-y"
           />
+          <FieldError errors={[{ message: state?.fieldErrors?.address }]} />
         </Field>
         <Field>
           <FieldLabel htmlFor="gender">Gender</FieldLabel>
@@ -110,14 +131,15 @@ export function PartyForm({ party }: { party?: Party }) {
             name="gender"
             value={gender}
             onValueChange={setGender}
+            placeholder="Choose gender"
             fullWidth
             options={[
-              { value: "unspecified", label: "Not specified" },
               { value: "male", label: "Male" },
               { value: "female", label: "Female" },
               { value: "other", label: "Other" },
             ]}
           />
+          <FieldError errors={[{ message: state?.fieldErrors?.gender }]} />
         </Field>
         <Field>
           <FieldLabel htmlFor="email">Email</FieldLabel>
@@ -137,6 +159,11 @@ export function PartyForm({ party }: { party?: Party }) {
               id="contact1"
               name="contact1"
               type="tel"
+              required
+              inputMode="tel"
+              pattern="[0-9+-s()]{10,20}"
+              maxLength={20}
+              title="Numbers only — 10 to 15 digits. Spaces, + - and brackets are allowed."
               defaultValue={party?.contact1 ?? ""}
               className="h-[42px]"
             />
@@ -147,6 +174,10 @@ export function PartyForm({ party }: { party?: Party }) {
               id="contact2"
               name="contact2"
               type="tel"
+              inputMode="tel"
+              pattern="[0-9+-s()]{10,20}"
+              maxLength={20}
+              title="Numbers only — 10 to 15 digits. Spaces, + - and brackets are allowed."
               defaultValue={party?.contact2 ?? ""}
               className="h-[42px]"
             />

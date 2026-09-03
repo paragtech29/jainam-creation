@@ -40,6 +40,11 @@ export async function createPartyAction(
       fieldErrors: {
         name: flattened.name?.[0],
         ownerName1: flattened.ownerName1?.[0],
+        ownerName2: flattened.ownerName2?.[0],
+        contact1: flattened.contact1?.[0],
+        contact2: flattened.contact2?.[0],
+        gender: flattened.gender?.[0],
+        address: flattened.address?.[0],
         email: flattened.email?.[0],
       },
     };
@@ -63,7 +68,7 @@ export async function createPartyAction(
     ownerName1: data.ownerName1,
     ownerName2: data.ownerName2 || null,
     address: data.address || null,
-    gender: data.gender && data.gender !== "unspecified" ? data.gender : null,
+    gender: data.gender,
     email: data.email || null,
     contact1: data.contact1 || null,
     contact2: data.contact2 || null,
@@ -88,6 +93,11 @@ export async function updatePartyAction(
       fieldErrors: {
         name: flattened.name?.[0],
         ownerName1: flattened.ownerName1?.[0],
+        ownerName2: flattened.ownerName2?.[0],
+        contact1: flattened.contact1?.[0],
+        contact2: flattened.contact2?.[0],
+        gender: flattened.gender?.[0],
+        address: flattened.address?.[0],
         email: flattened.email?.[0],
       },
     };
@@ -103,7 +113,7 @@ export async function updatePartyAction(
     ownerName1: data.ownerName1,
     ownerName2: data.ownerName2 || null,
     address: data.address || null,
-    gender: data.gender && data.gender !== "unspecified" ? data.gender : null,
+    gender: data.gender,
     email: data.email || null,
     contact1: data.contact1 || null,
     contact2: data.contact2 || null,

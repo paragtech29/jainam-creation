@@ -45,7 +45,7 @@ export default async function PartiesPage({
       {sp.new === "1" ? (
         <RecordDialog
           title="Add party"
-          description="Only the party name and first owner name are required."
+          description="Party name, owner name, contact number and gender are required."
         >
           <PartyForm />
         </RecordDialog>

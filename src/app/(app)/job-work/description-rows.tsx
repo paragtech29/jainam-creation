@@ -177,6 +177,8 @@ export function DescriptionRows({
                   inputMode="numeric"
                   step="1"
                   min="1"
+                  max="1000000"
+                  title="Whole rupees, at least 1"
                   placeholder="0"
                   aria-label={`Price for row ${i + 1}`}
                   value={row.price}

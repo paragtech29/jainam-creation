@@ -1,18 +1,38 @@
 // Shared client/server validation schema for the Party master.
+// Field rules live in ./common so party, karigar and job work agree on what a
+// name and a phone number are.
 import { z } from "zod";
+import {
+  businessName,
+  optionalPersonName,
+  optionalPhone,
+  optionalText,
+  personName,
+  phone,
+} from "./common";
 
 export const partySchema = z.object({
-  name: z.string().trim().min(1, "Party name is required"),
-  ownerName1: z.string().trim().min(1, "Owner name 1 is required"),
-  ownerName2: z.string().trim().optional().or(z.literal("")),
-  address: z.string().trim().optional().or(z.literal("")),
-  // "unspecified" is the sentinel the form sends for no answer — Radix Select
-  // cannot carry "" as a value. Empty string is still accepted so a direct
-  // post or an older draft keeps working.
-  gender: z.enum(["male", "female", "other", "", "unspecified"]).optional(),
-  email: z.string().trim().email("Enter a valid email").optional().or(z.literal("")),
-  contact1: z.string().trim().optional().or(z.literal("")),
-  contact2: z.string().trim().optional().or(z.literal("")),
+  // Business name: digits allowed ("3 Star Creation"), but not digits alone.
+  name: businessName("Party name"),
+
+  // A person's name — no digits.
+  ownerName1: personName("Owner name 1"),
+  ownerName2: optionalPersonName("Owner name 2"),
+
+  // Required, per the owner: a party you cannot ring is not much use.
+  contact1: phone("Contact 1"),
+  contact2: optionalPhone("Contact 2"),
+
+  // Required. "unspecified" is the sentinel the Radix Select sends for no
+  // answer — it is deliberately NOT accepted here, which is what makes the
+  // field mandatory.
+  gender: z.enum(["male", "female", "other"], {
+    message: "Choose a gender",
+  }),
+
+  address: optionalText("Address"),
+  email: z.union([z.literal(""), z.string().trim().email("Enter a valid email")]),
+
   // Warn-but-allow duplicate-name resubmit flag — see 02-RESEARCH.md.
   confirmDuplicate: z.coerce.boolean().optional(),
 });

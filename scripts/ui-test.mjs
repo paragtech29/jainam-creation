@@ -41,7 +41,15 @@ const ROUTES = [
 ];
 
 let pass = 0;
+let skipped = 0;
 const failures = [];
+
+// A pagination rule cannot be tested with three records. Skipping loudly is
+// honest; reporting a pass or a failure would both be lies.
+function skip(label, why) {
+  skipped++;
+  console.log(`SKIP - ${label}  (${why})`);
+}
 function check(label, ok, detail = "") {
   if (ok) pass++;
   else failures.push(label + (detail ? "  (" + detail + ")" : ""));
@@ -114,6 +122,18 @@ for (const [name, path] of ROUTES) {
 // pager pinned to the bottom of the body regardless of how many rows the page
 // happens to hold.
 console.log("\n--- PAGINATION ---");
+
+// These rules cannot be tested with three records. Detect that and skip
+// loudly — reporting a pass or a failure would both be dishonest.
+await page.goto(BASE + "/parties", { waitUntil: "domcontentloaded" });
+await page.waitForTimeout(800);
+const totalParties = await page.evaluate(() => {
+  const m = document.body.innerText.match(/of\s+(\d+)/);
+  return m ? Number(m[1]) : document.querySelectorAll("tbody tr").length;
+});
+const canPage = totalParties > 10;
+if (!canPage) skip("pagination rules", `only ${totalParties} records — run: npm run seed:bulk`);
+
 for (const [label, path, expectPager] of [
   ["parties page 1", "/parties", true],
   ["parties last page", "/parties?page=3", true],
@@ -121,6 +141,7 @@ for (const [label, path, expectPager] of [
   ["karigars last page", "/karigars?page=3", true],
   ["job work last page", "/job-work?page=3", true],
 ]) {
+  if (!canPage && expectPager) continue;
   await page.goto(BASE + path, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(800);
   const m = await page.evaluate(() => {
@@ -244,7 +265,7 @@ check("no raw zod message reaches the owner",
   !e.some((x) => /invalid input|expected string|received undefined/i.test(x)), e.join(" | "));
 
 console.log("\njs page errors across the run:", jsErrors.length ? jsErrors.join(" | ") : "none");
-console.log(`\n${pass} passed, ${failures.length} failed`);
+console.log(`\n${pass} passed, ${failures.length} failed, ${skipped} skipped`);
 if (failures.length) console.log("FAILURES:\n  " + failures.join("\n  "));
 await browser.close();
 process.exit(failures.length ? 1 : 0);

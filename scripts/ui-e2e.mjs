@@ -70,7 +70,12 @@ check("the form previews the book total 20,412", /20,?412/.test(shown));
 
 await page.fill('input[name="chalanNo"]', "767");
 await page.locator('button:has-text("Save job work")').first().click();
-await page.waitForTimeout(3500);
+// Wait for the redirect rather than guessing at a sleep: a cold dev-server
+// compile can take longer than any fixed timeout worth writing.
+await page
+  .waitForURL((u) => !u.pathname.endsWith("/new"), { timeout: 30000 })
+  .catch(() => {});
+await page.waitForTimeout(500);
 
 const savedUrl = page.url();
 check("job work saves and leaves the form", !savedUrl.includes("/new"), savedUrl);

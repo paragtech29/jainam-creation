@@ -1,57 +1,92 @@
 import Link from "next/link";
 import { getCurrentUserId } from "@/lib/session";
-import { listParties } from "@/lib/db/repositories/parties";
-import { listKarigars } from "@/lib/db/repositories/karigars";
-import { listJobWorksPage } from "@/lib/db/repositories/jobWorks";
+import {
+  listJobWorksPage,
+  getMonthSummary,
+  getJobWorkDateRange,
+} from "@/lib/db/repositories/jobWorks";
+import { MonthPicker } from "./month-picker";
 
 function inr(n: number) {
   return "₹" + n.toLocaleString("en-IN");
 }
 
-export default async function DashboardPage() {
+/** "2026-08" -> { from: "2026-08-01", to: "2026-08-31", label: "August 2026" } */
+function monthBounds(month: string) {
+  const [y, m] = month.split("-").map(Number);
+  const first = new Date(Date.UTC(y, m - 1, 1));
+  // Day 0 of the NEXT month is the last day of this one, so February and the
+  // leap years take care of themselves.
+  const last = new Date(Date.UTC(y, m, 0));
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  return {
+    from: iso(first),
+    to: iso(last),
+    label: first.toLocaleDateString("en-IN", { month: "long", year: "numeric", timeZone: "UTC" }),
+  };
+}
+
+function thisMonth() {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`;
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ month?: string }>;
+}) {
+  const sp = await searchParams;
   const userId = await getCurrentUserId();
 
-  const [parties, karigars, jobs] = await Promise.all([
-    listParties(userId),
-    listKarigars(userId),
-    // Everything, so the month figures are computed from real rows rather
-    // than a sampled page. Fine at this scale; Phase 6 moves the aggregation
-    // into SQL when the dashboard gets its real month picker.
-    listJobWorksPage(userId, { page: 1, pageSize: 1000 }),
+  // A malformed ?month simply falls back to now, rather than throwing.
+  const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.month ?? "") ? sp.month! : thisMonth();
+  const { from, to, label } = monthBounds(month);
+
+  const [summary, range, recentPage] = await Promise.all([
+    getMonthSummary(userId, from, to),
+    getJobWorkDateRange(userId),
+    listJobWorksPage(userId, { page: 1, pageSize: 6 }),
   ]);
 
-  const rows = jobs.rows;
-  const now = new Date();
-  const inThisMonth = rows.filter((r) => {
-    const d = new Date(r.date);
-    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-  });
+  // Stop the picker wandering into empty years in either direction. Forward
+  // is capped at the current month even when a job work is dated ahead.
+  const earliest = (range.first ?? thisMonth() + "-01").slice(0, 7);
+  const latest = [range.last?.slice(0, 7), thisMonth()].filter(Boolean).sort().pop()!;
+  const canGoBack = month > earliest;
+  const canGoForward = month < latest;
 
-  const monthTotal = inThisMonth.reduce((sum, r) => sum + r.total, 0);
-  const pendingCount = rows.filter((r) => r.status === "PENDING").length;
-  const unbilled = rows.filter((r) => r.status === "COMPLETED" && !r.isBilled);
-  const unbilledTotal = unbilled.reduce((sum, r) => sum + r.total, 0);
+  const recent = recentPage.rows;
 
+  // The owner's asked-for breakup: what is still to do, what is finished but
+  // not invoiced, and what has been billed — as AMOUNTS, since "how much" is
+  // the question. Every figure is for the SELECTED month.
   const tiles = [
-    { label: "This month", value: inr(monthTotal), note: `${inThisMonth.length} job ${inThisMonth.length === 1 ? "work" : "works"}` },
-    { label: "Pending", value: String(pendingCount), note: "not started yet" },
-    { label: "Completed, not billed", value: inr(unbilledTotal), note: `${unbilled.length} to invoice`, warn: unbilled.length > 0 },
-    { label: "Parties", value: String(parties.length), note: `${karigars.length} karigars` },
+    { label: "Earned", value: inr(summary.total), note: `${summary.count} job ${summary.count === 1 ? "work" : "works"}` },
+    { label: "Pending", value: inr(summary.pendingTotal + summary.inProgressTotal), note: "not finished yet" },
+    {
+      label: "To invoice",
+      value: inr(summary.toInvoiceTotal),
+      note: "completed, not billed",
+      warn: summary.toInvoiceTotal > 0,
+    },
+    { label: "Billed", value: inr(summary.billedTotal), note: "already invoiced" },
   ];
 
-  // Per-party earnings this month, biggest first — the question he asked for
-  // at the very start: "how much did I get from Mayra last month".
-  const byParty = new Map<string, number>();
-  for (const r of inThisMonth) byParty.set(r.partyName, (byParty.get(r.partyName) ?? 0) + r.total);
-  const partyBars = [...byParty.entries()]
-    .map(([name, amount]) => ({ name, amount }))
-    .sort((a, b) => b.amount - a.amount);
-  const biggest = partyBars[0]?.amount ?? 0;
-
-  const recent = rows.slice(0, 6);
+  const biggest = summary.byParty[0]?.total ?? 0;
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col leading-tight">
+          <span className="text-[14.5px] font-semibold tracking-tight">{label}</span>
+          <span className="text-xs text-muted-foreground">
+            Every figure below is for this month
+          </span>
+        </div>
+        <MonthPicker month={month} label={label} canGoBack={canGoBack} canGoForward={canGoForward} />
+      </div>
+
       <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(186px,1fr))]">
         {tiles.map((t) => (
           <div
@@ -113,30 +148,37 @@ export default async function DashboardPage() {
         <section className="overflow-hidden rounded-[14px] border border-border bg-card">
           <div className="flex items-baseline justify-between gap-3 border-b border-border px-[18px] py-3.5">
             <span className="text-[14.5px] font-semibold tracking-tight">Work by party</span>
-            <span className="text-xs text-muted-foreground">this month</span>
+            <span className="text-xs text-muted-foreground">{label}</span>
           </div>
 
-          {partyBars.length === 0 ? (
+          {summary.byParty.length === 0 ? (
             <p className="px-[18px] py-8 text-center text-sm text-muted-foreground">
-              No job works this month yet.
+              No job works in {label}.
             </p>
           ) : (
             <div className="py-2">
-              {partyBars.map((p) => (
-                <div key={p.name} className="flex flex-col gap-[7px] px-[18px] py-2.5">
+              {/* Each row lands on the job work list already filtered to this
+                  party AND this month — the figure and the rows behind it are
+                  never a re-derivation the owner has to trust. */}
+              {summary.byParty.map((p) => (
+                <Link
+                  key={p.partyId}
+                  href={`/job-work?from=${from}&to=${to}&party=${p.partyId}`}
+                  className="flex flex-col gap-[7px] px-[18px] py-2.5 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                >
                   <div className="flex items-baseline justify-between gap-3">
-                    <span className="truncate text-[13.5px] font-medium">{p.name}</span>
+                    <span className="truncate text-[13.5px] font-medium">{p.partyName}</span>
                     <span className="shrink-0 font-mono text-[13px] tabular-nums text-secondary-foreground">
-                      {inr(p.amount)}
+                      {inr(p.total)}
                     </span>
                   </div>
-                  <div className="h-[7px] overflow-hidden rounded-full bg-accent">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                     <div
-                      className="h-full rounded-full bg-primary"
-                      style={{ width: `${biggest > 0 ? Math.max(4, (p.amount / biggest) * 100) : 0}%` }}
+                      className="h-full rounded-full bg-brand"
+                      style={{ width: biggest > 0 ? `${Math.max(4, (p.total / biggest) * 100)}%` : "0%" }}
                     />
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}

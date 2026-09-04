@@ -434,6 +434,52 @@ check("no raw zod message reaches the owner",
 // the dialog was already sitting on, so the dialog stayed open), and "Save
 // changes" was enabled on an untouched form, inviting a write with nothing
 // to write.
+// ─────────────────────────── the dashboard ───────────────────────────
+// The month picker is the whole point: "how much did I earn from Mayra LAST
+// month" is the question the app was built to answer, and until now the
+// dashboard could only ever show the current one.
+console.log("\n--- DASHBOARD ---");
+{
+  const text = () => page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
+
+  await page.goto(BASE + "/dashboard", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1100);
+  const monthNow = new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+  check("the dashboard opens on the current month", (await text()).includes(monthNow), monthNow);
+
+  // Step back a month and confirm the view actually moved and persisted.
+  const back = page.locator('button[aria-label="Previous month"]');
+  if ((await back.count()) && !(await back.isDisabled())) {
+    await back.click();
+    await page.waitForURL((u) => u.search.includes("month="), { timeout: 20000 }).catch(() => {});
+    await page.waitForTimeout(1000);
+    check("stepping back changes the month", !(await text()).includes(monthNow));
+    check("the month is in the URL, so a refresh keeps it", page.url().includes("month="), page.url());
+  } else {
+    skip("month picker step-back", "no earlier month to step to");
+  }
+
+  // Forward is capped at today — a dashboard that pages into empty future
+  // months invites the owner to think data is missing.
+  await page.goto(BASE + "/dashboard", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(900);
+  const fwd = await page.evaluate(
+    () => document.querySelector('button[aria-label="Next month"]')?.disabled
+  );
+  check("cannot page past the current month", fwd === true, "disabled=" + fwd);
+
+  // Every figure must be reachable: the number and the rows behind it.
+  const link = await page.evaluate(() => {
+    const a = document.querySelector('a[href*="/job-work?from="]');
+    return a ? a.getAttribute("href") : null;
+  });
+  if (link) {
+    check("a party figure links to the filtered job work list", /party=/.test(link) && /from=/.test(link), link);
+  } else {
+    skip("party figure link", "no job works in the current month");
+  }
+}
+
 console.log("\n--- DIALOG CANCEL AND DIRTY-GATING ---");
 {
   const saveDisabled = () =>

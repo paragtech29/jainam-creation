@@ -163,6 +163,92 @@ export type JobWorkListRow = {
   isBilled: boolean;
 };
 
+/**
+ * Everything the dashboard shows for ONE month, aggregated in SQL.
+ *
+ * The dashboard previously pulled up to 1000 rows and added them up in
+ * JavaScript, which is both wrong at scale and silently wrong past the page
+ * size — the 1001st job work would just not count. Postgres does the sums.
+ *
+ * `from`/`to` are inclusive YYYY-MM-DD strings. Status amounts are the
+ * owner's asked-for breakup: what is still pending, what is finished but not
+ * invoiced, and what has been billed. They are amounts, not counts, because
+ * "how much" is the question the dashboard exists to answer.
+ */
+export type MonthSummary = {
+  total: number;
+  count: number;
+  pendingTotal: number;
+  inProgressTotal: number;
+  /** COMPLETED and not yet billed — the money still to invoice. */
+  toInvoiceTotal: number;
+  billedTotal: number;
+  byParty: { partyId: string; partyName: string; total: number; count: number }[];
+};
+
+export async function getMonthSummary(
+  userId: string,
+  from: string,
+  to: string
+): Promise<MonthSummary> {
+  const inMonth = and(
+    eq(jobWorks.userId, userId),
+    gte(jobWorks.date, from),
+    lte(jobWorks.date, to)
+  );
+
+  const [totals] = await db
+    .select({
+      total: sql<number>`coalesce(sum(${jobWorks.total}), 0)::int`,
+      count: sql<number>`count(*)::int`,
+      pendingTotal: sql<number>`coalesce(sum(${jobWorks.total}) filter (where ${jobWorks.status} = 'PENDING'), 0)::int`,
+      inProgressTotal: sql<number>`coalesce(sum(${jobWorks.total}) filter (where ${jobWorks.status} = 'IN_PROGRESS'), 0)::int`,
+      toInvoiceTotal: sql<number>`coalesce(sum(${jobWorks.total}) filter (where ${jobWorks.status} = 'COMPLETED' and ${jobWorks.isBilled} = false), 0)::int`,
+      billedTotal: sql<number>`coalesce(sum(${jobWorks.total}) filter (where ${jobWorks.isBilled} = true), 0)::int`,
+    })
+    .from(jobWorks)
+    .where(inMonth);
+
+  // partyId comes back too, so the dashboard figure can link straight to the
+  // job work list filtered to that party and month.
+  const byParty = await db
+    .select({
+      partyId: parties.id,
+      partyName: parties.name,
+      total: sql<number>`coalesce(sum(${jobWorks.total}), 0)::int`,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(jobWorks)
+    .innerJoin(parties, eq(parties.id, jobWorks.partyId))
+    .where(inMonth)
+    .groupBy(parties.id, parties.name)
+    .orderBy(desc(sql`sum(${jobWorks.total})`));
+
+  return {
+    total: totals?.total ?? 0,
+    count: totals?.count ?? 0,
+    pendingTotal: totals?.pendingTotal ?? 0,
+    inProgressTotal: totals?.inProgressTotal ?? 0,
+    toInvoiceTotal: totals?.toInvoiceTotal ?? 0,
+    billedTotal: totals?.billedTotal ?? 0,
+    byParty,
+  };
+}
+
+/** The earliest and latest job work dates, for bounding the month picker. */
+export async function getJobWorkDateRange(
+  userId: string
+): Promise<{ first: string | null; last: string | null }> {
+  const [r] = await db
+    .select({
+      first: sql<string | null>`min(${jobWorks.date})::text`,
+      last: sql<string | null>`max(${jobWorks.date})::text`,
+    })
+    .from(jobWorks)
+    .where(eq(jobWorks.userId, userId));
+  return { first: r?.first ?? null, last: r?.last ?? null };
+}
+
 export async function listJobWorksPage(
   userId: string,
   opts: {

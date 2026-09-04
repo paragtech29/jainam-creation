@@ -11,6 +11,7 @@
 //
 // Env: BASE_URL, UI_USER, UI_PASS, SHOT_DIR, ONLY_VP, ONLY
 import { chromium } from "playwright";
+import ExcelJS from "exceljs";
 import { mkdirSync } from "node:fs";
 
 const BASE = process.env.BASE_URL || "http://localhost:3000";
@@ -461,6 +462,144 @@ check("no raw zod message reaches the owner",
 // Upload only, never the camera: the owner asked for "just open box select
 // image". A `capture` attribute would make a phone open the camera instead of
 // the picker, so its ABSENCE is the requirement being tested.
+// ─────────────────────────── export ───────────────────────────
+// The trap this guards against: exporting page 1 of a filtered view and
+// calling it "the filtered view". So the row count in the file is compared
+// against the database count, and the grand total against the screen.
+console.log("\n--- EXPORT ---");
+{
+  await page.goto(BASE + "/job-work", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1100);
+
+  const screen = await page.evaluate(() => {
+    const t = document.body.innerText.replace(/\s+/g, " ");
+    return {
+      total: (t.match(/Total this view ₹([\d,]+)/) || [])[1] ?? null,
+      of: Number((t.match(/of\s+(\d+)/) || [])[1] ?? 0),
+      rows: document.querySelectorAll("tbody tr").length,
+    };
+  });
+
+  if (screen.rows === 0) {
+    skip("export", "no job works to export");
+  } else {
+    check("an Export button is on the job work list", await page.isVisible('button:has-text("Export")'));
+
+    const res = await page.request.get(BASE + "/api/export/job-works");
+    check("the Excel route returns a file", res.status() === 200, "status " + res.status());
+    check(
+      "as a spreadsheet, marked for download",
+      (res.headers()["content-type"] ?? "").includes("spreadsheetml") &&
+        (res.headers()["content-disposition"] ?? "").includes("attachment"),
+      res.headers()["content-type"]
+    );
+
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await res.body());
+    const ws = wb.getWorksheet("Job Work");
+    check("the workbook has a Job Work sheet", Boolean(ws));
+
+    if (ws) {
+      const head = ws.getRow(3).values.filter(Boolean).map(String);
+      check(
+        "columns follow the book's order",
+        head.slice(0, 7).join("|") ===
+          "Date|Chalan No.|Party|Silai Karigar|Party D.No.|Computer D.No.|Particulars",
+        head.slice(0, 7).join("|")
+      );
+
+      const all = [];
+      ws.eachRow((row, n) => {
+        if (n > 3) all.push(row);
+      });
+      const body = all.slice(0, -1);
+      const totalRow = all[all.length - 1];
+      const totalCol = head.indexOf("Total") + 1;
+
+      // The whole point: every matching row, not one page of them.
+      check(
+        "EVERY job work is exported, not just the current page",
+        body.length === screen.of,
+        `xlsx=${body.length} db=${screen.of}`
+      );
+
+      const summed = body.reduce((a, r) => a + Number(r.getCell(totalCol).value || 0), 0);
+      const stated = Number(totalRow.getCell(totalCol).value || 0);
+      check("the grand total equals the sum of its own rows", summed === stated, `rows=${summed} stated=${stated}`);
+      check(
+        "and equals the total shown on screen",
+        stated === Number((screen.total ?? "0").replace(/,/g, "")),
+        `xlsx=${stated} screen=${screen.total}`
+      );
+
+      const piecesCol = head.indexOf("Pieces") + 1;
+      check(
+        "figures are numbers, so Excel can re-sum them",
+        body.every((r) => typeof r.getCell(piecesCol).value === "number")
+      );
+    }
+
+    // A filter must actually narrow the file.
+    const filteredRes = await page.request.get(BASE + "/api/export/job-works?status=PENDING");
+    const fwb = new ExcelJS.Workbook();
+    await fwb.xlsx.load(await filteredRes.body());
+    const fws = fwb.getWorksheet("Job Work");
+    if (fws) {
+      const fhead = fws.getRow(3).values.filter(Boolean).map(String);
+      const statusCol = fhead.indexOf("Status") + 1;
+      const frows = [];
+      fws.eachRow((row, n) => {
+        if (n > 3) frows.push(row);
+      });
+      const fbody = frows.slice(0, -1);
+      check(
+        "every row in a filtered export honours the filter",
+        fbody.length > 0 && fbody.every((r) => String(r.getCell(statusCol).value) === "Pending"),
+        [...new Set(fbody.map((r) => String(r.getCell(statusCol).value)))].join(",")
+      );
+      check(
+        "the file records which filter produced it",
+        String(fws.getCell("A2").value).includes("Pending"),
+        String(fws.getCell("A2").value)
+      );
+    }
+
+    // The backup must be able to rebuild the relationships, not just the rows.
+    const backupRes = await page.request.get(BASE + "/api/export/everything");
+    const bwb = new ExcelJS.Workbook();
+    await bwb.xlsx.load(await backupRes.body());
+    const sheets = bwb.worksheets.map((w) => w.name);
+    check(
+      "the backup has a sheet per entity",
+      ["Job Work", "Parties", "Silai Karigars", "Karigar Parties", "Description Types"].every((n) =>
+        sheets.includes(n)
+      ),
+      sheets.join(", ")
+    );
+    check(
+      "including the karigar-party links, or who-sews-for-whom is lost",
+      bwb.getWorksheet("Karigar Parties").rowCount > 1
+    );
+
+    // PDF is the browser's print-to-PDF, so the ₹ must survive as text.
+    await page.goto(BASE + "/job-work/print?status=PENDING", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(1400);
+    const printed = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
+    check("the print page renders a table with a grand total", /Grand total/.test(printed));
+    check("the rupee sign survives as text, not a missing glyph", printed.includes("₹"));
+
+    // Signed out, no spreadsheet may come back.
+    const anon = await browser.newContext();
+    const anonRes = await anon.request.get(BASE + "/api/export/everything", { maxRedirects: 0 });
+    check(
+      "a signed-out request gets no spreadsheet",
+      !(anonRes.headers()["content-type"] ?? "").includes("spreadsheetml"),
+      "status " + anonRes.status()
+    );
+    await anon.close();
+  }
+}
+
 console.log("\n--- IMAGE UPLOAD ---");
 {
   await page.goto(BASE + "/parties", { waitUntil: "domcontentloaded" });

@@ -7,6 +7,7 @@ import { Pagination } from "@/components/pagination";
 import { EmptyState } from "@/components/empty-state";
 import { JobWorkFilters } from "./job-work-filters";
 import { JobWorkList } from "./job-work-list";
+import { ExportMenu } from "./export-menu";
 
 const PAGE_SIZE = 10;
 
@@ -115,6 +116,7 @@ export default async function JobWorkPage({
                 ₹{grandTotal.toLocaleString("en-IN")}
               </strong>
             </span>
+            <ExportMenu rowCount={total} />
           </div>
         </>
       ) : null}

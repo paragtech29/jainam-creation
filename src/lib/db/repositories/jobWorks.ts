@@ -198,6 +198,97 @@ export type MonthSummary = {
   byParty: { partyId: string; partyName: string; total: number; count: number }[];
 };
 
+/**
+ * Every job work matching a filter, with its description lines, for export.
+ *
+ * Separate from listJobWorksPage because an export must NOT be paginated —
+ * exporting page 1 of a filtered view and calling it "the filtered view" is
+ * the kind of quiet wrongness that only shows up when the owner's totals
+ * disagree with his book.
+ *
+ * The filter arguments are deliberately identical to listJobWorksPage's, so
+ * the export and the screen it was launched from cannot drift apart.
+ *
+ * `particulars` is the description types joined into one cell, matching the
+ * "Particulars" column in his register.
+ */
+export type JobWorkExportRow = JobWorkListRow & {
+  computerDesignNo: string | null;
+  comment: string | null;
+  particulars: string;
+};
+
+export async function listJobWorksForExport(
+  userId: string,
+  opts: {
+    search?: string;
+    from?: string;
+    to?: string;
+    partyId?: string;
+    karigarId?: string;
+    status?: string;
+    billed?: "yes" | "no";
+  } = {}
+): Promise<{ rows: JobWorkExportRow[]; grandTotal: number }> {
+  const { search = "", from, to, partyId, karigarId, status, billed } = opts;
+  const term = search.trim();
+
+  const where = and(
+    eq(jobWorks.userId, userId),
+    from ? gte(jobWorks.date, from) : undefined,
+    to ? lte(jobWorks.date, to) : undefined,
+    partyId ? eq(jobWorks.partyId, partyId) : undefined,
+    karigarId ? eq(jobWorks.karigarId, karigarId) : undefined,
+    status ? eq(jobWorks.status, status as "PENDING" | "IN_PROGRESS" | "COMPLETED") : undefined,
+    billed === "yes" ? eq(jobWorks.isBilled, true) : billed === "no" ? eq(jobWorks.isBilled, false) : undefined,
+    term
+      ? or(
+          ilike(jobWorks.chalanNo, `%${term}%`),
+          ilike(jobWorks.partyDesignNo, `%${term}%`),
+          ilike(jobWorks.computerDesignNo, `%${term}%`),
+          ilike(parties.name, `%${term}%`),
+          ilike(silaiKarigars.name, `%${term}%`)
+        )
+      : undefined
+  );
+
+  // The description names are aggregated in SQL rather than with a second
+  // query per row — an export of a few hundred rows would otherwise be a few
+  // hundred round trips to Neon.
+  const rows = await db
+    .select({
+      id: jobWorks.id,
+      date: jobWorks.date,
+      partyName: parties.name,
+      karigarName: silaiKarigars.name,
+      chalanNo: jobWorks.chalanNo,
+      partyDesignNo: jobWorks.partyDesignNo,
+      computerDesignNo: jobWorks.computerDesignNo,
+      pieces: jobWorks.pieces,
+      rate: jobWorks.rate,
+      total: jobWorks.total,
+      status: jobWorks.status,
+      isBilled: jobWorks.isBilled,
+      comment: jobWorks.comment,
+      particulars: sql<string>`coalesce(string_agg(distinct ${descriptionTypes.name}, ', '), '')`,
+    })
+    .from(jobWorks)
+    .innerJoin(parties, eq(parties.id, jobWorks.partyId))
+    .innerJoin(silaiKarigars, eq(silaiKarigars.id, jobWorks.karigarId))
+    .leftJoin(jobWorkDescriptions, eq(jobWorkDescriptions.jobWorkId, jobWorks.id))
+    .leftJoin(descriptionTypes, eq(descriptionTypes.id, jobWorkDescriptions.descriptionTypeId))
+    .where(where)
+    .groupBy(
+      jobWorks.id,
+      parties.name,
+      silaiKarigars.name
+    )
+    .orderBy(asc(jobWorks.date), asc(jobWorks.chalanNo));
+
+  const grandTotal = rows.reduce((sum, r) => sum + r.total, 0);
+  return { rows, grandTotal };
+}
+
 export async function getMonthSummary(
   userId: string,
   from: string,

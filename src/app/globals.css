@@ -301,3 +301,64 @@ input[type="search"]::-webkit-search-results-decoration {
   -webkit-appearance: none;
   appearance: none;
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Print. The PDF export is the browser's own print-to-PDF —
+   there is no server-side PDF, because the built-in PDF fonts
+   have no ₹ glyph and shipping a font raised a licence
+   question. Printing renders ₹ with the device's own fonts.
+
+   So the app chrome must not reach the paper: no sidebar, no
+   header, no buttons, and the h-svh/overflow-hidden shell has
+   to be released or only the first screenful prints.
+   ───────────────────────────────────────────────────────────── */
+@media print {
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  /* The shell is h-svh with overflow hidden. Left alone, the print
+     stops at one screenful and the rest of the table is simply gone. */
+  body > div {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  aside,
+  header,
+  nav {
+    display: none !important;
+  }
+
+  main {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  .print-sheet {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Keep a row intact across a page break, and repeat the header on
+     every page — a table that breaks mid-row is unreadable. */
+  tr {
+    break-inside: avoid;
+  }
+  thead {
+    display: table-header-group;
+  }
+  tfoot {
+    display: table-footer-group;
+  }
+
+  /* Colours are set to print rather than being dropped by the
+     browser's default "don't waste ink" behaviour. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

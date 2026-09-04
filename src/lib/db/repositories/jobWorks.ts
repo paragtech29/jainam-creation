@@ -4,6 +4,7 @@
 // never throws, never touches another user's row" principle.
 import { and, asc, desc, eq, gte, ilike, lte, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
+import { deleteImage } from "@/lib/db/repositories/images";
 import {
   jobWorks,
   jobWorkDescriptions,
@@ -35,6 +36,17 @@ export async function getJobWorkById(userId: string, id: string): Promise<JobWor
 }
 
 export async function deleteJobWork(userId: string, id: string) {
+  // Photos first. Their FK is ON DELETE SET NULL — losing an image must never
+  // delete a job work — so nothing removes them automatically, and without
+  // this their bytes stay in the database with nothing pointing at them.
+  const [row] = await db
+    .select({ p1: jobWorks.photo1ImageId, p2: jobWorks.photo2ImageId })
+    .from(jobWorks)
+    .where(and(eq(jobWorks.userId, userId), eq(jobWorks.id, id)))
+    .limit(1);
+  if (row?.p1) await deleteImage(userId, row.p1);
+  if (row?.p2) await deleteImage(userId, row.p2);
+
   // No manual delete of jobWorkDescriptions needed here: the FK has
   // onDelete: "cascade" (schema.ts), so deleting the job work already
   // removes its lines. Do not "fix" this by adding a manual delete.

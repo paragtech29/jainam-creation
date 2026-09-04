@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/field";
 import { createPartyAction, updatePartyAction, type PartyFormState } from "./actions";
 import { Req } from "@/components/required-mark";
+import { ImageUpload } from "@/components/image-upload";
 import { useDirtyFields } from "@/lib/use-dirty-fields";
 
 function SubmitButton({ label, disabled }: { label: string; disabled?: boolean }) {
@@ -43,6 +44,7 @@ function SubmitButton({ label, disabled }: { label: string; disabled?: boolean }
 export type PartyFormValues = {
   id: string;
   name: string;
+  logoImageId: string | null;
   ownerName1: string;
   ownerName2: string | null;
   address: string | null;
@@ -60,7 +62,7 @@ export function PartyForm({ party }: { party?: PartyFormValues }) {
   const [gender, setGender] = useState(party?.gender ?? "");
   // Only an EDIT gates its button on having changes. A create form must stay
   // submittable so a blank save still surfaces "Please enter party name".
-  const { formRef, dirty, recheck } = useDirtyFields({
+  const { formRef, dirty, recheck, markDirty } = useDirtyFields({
     name: party?.name ?? "",
     ownerName1: party?.ownerName1 ?? "",
     ownerName2: party?.ownerName2 ?? "",
@@ -104,7 +106,16 @@ export function PartyForm({ party }: { party?: PartyFormValues }) {
       <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-5 sm:p-6">
       <FieldSet>
         <div className="grid gap-x-4 gap-y-4 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
-        <Field>
+        <Field className="[grid-column:1/-1]">
+          <ImageUpload
+            name="logo"
+            label="Logo"
+            hint="Optional. Shown next to the party name."
+            currentImageId={party?.logoImageId}
+            onChanged={markDirty}
+          />
+        </Field>
+        <Field className="[grid-column:1/-1]">
           <FieldLabel htmlFor="name">Party name <Req /></FieldLabel>
           <Input
             id="name"

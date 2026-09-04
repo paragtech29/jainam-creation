@@ -3,9 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUserId } from "@/lib/session";
+import { saveUploadedImage } from "@/lib/save-uploaded-image";
 import { jobWorkSchema, computeTotal } from "@/lib/validation/job-work";
 import { descriptionTypeSchema } from "@/lib/validation/description-type";
-import { createJobWork, updateJobWork, deleteJobWork } from "@/lib/db/repositories/jobWorks";
+import {
+  createJobWork,
+  updateJobWork,
+  deleteJobWork,
+  getJobWorkById,
+} from "@/lib/db/repositories/jobWorks";
 import {
   createDescriptionType,
   listDescriptionTypes,
@@ -103,6 +109,11 @@ export async function createJobWorkAction(
   // add it later.
   const total = computeTotal(pieces, rate);
 
+  const photo1 = await saveUploadedImage(userId, formData, "photo1", null);
+  if (photo1.error) return { error: photo1.error };
+  const photo2 = await saveUploadedImage(userId, formData, "photo2", null);
+  if (photo2.error) return { error: photo2.error };
+
   const jobWork = await createJobWork(
     userId,
     {
@@ -187,14 +198,20 @@ export async function updateJobWorkAction(
   }
   const isBilled = wantsBilled;
 
+  // The existing ids matter twice over: a replacement must delete the image
+  // it replaced, and an untouched field must keep what is already there.
+  const current = await getJobWorkById(userId, jobWorkId);
+  const newPhoto1 = await saveUploadedImage(userId, formData, "photo1", current?.photo1ImageId);
+  if (newPhoto1.error) return { error: newPhoto1.error };
+  const newPhoto2 = await saveUploadedImage(userId, formData, "photo2", current?.photo2ImageId);
+  if (newPhoto2.error) return { error: newPhoto2.error };
+
   const jobWork = await updateJobWork(
     userId,
     jobWorkId,
     {
-      // Never include photo1Url/photo2Url — Phase 4 owns those columns, and
-      // Drizzle's .set() leaves omitted columns untouched, which is exactly
-      // what preserves an already-uploaded photo across an edit. Do not
-      // "complete" this object with them.
+      photo1ImageId: newPhoto1.imageId,
+      photo2ImageId: newPhoto2.imageId,
       date,
       partyId,
       karigarId,

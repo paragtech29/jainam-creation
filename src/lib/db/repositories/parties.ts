@@ -3,6 +3,7 @@
 // userId as its mandatory first parameter.
 import { and, asc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
+import { deleteImage } from "@/lib/db/repositories/images";
 import { parties, partyKarigars, silaiKarigars, jobWorks, type Party, type NewParty } from "@/lib/db/schema";
 
 export async function listParties(userId: string): Promise<Party[]> {
@@ -26,6 +27,7 @@ export async function getPartyById(userId: string, id: string): Promise<Party | 
 export type PartyListRow = {
   id: string;
   name: string;
+  logoImageId: string | null;
   ownerName1: string;
   // Everything below is here so the edit dialog can open straight from the
   // row the owner clicked, with no second query and no loading state.
@@ -76,6 +78,7 @@ export async function listPartiesPage(
       .select({
         id: parties.id,
         name: parties.name,
+        logoImageId: parties.logoImageId,
         ownerName1: parties.ownerName1,
         ownerName2: parties.ownerName2,
         address: parties.address,
@@ -172,7 +175,17 @@ export async function deleteParty(
   if (count > 0) {
     return { ok: false, reason: "This party has job works and cannot be deleted. Archive it instead." };
   }
+  // The logo's FK is ON DELETE SET NULL — losing an image must never take
+  // the party with it — so the image row has to go explicitly, or its bytes
+  // sit in the database forever with nothing pointing at them.
+  const [row] = await db
+    .select({ logoImageId: parties.logoImageId })
+    .from(parties)
+    .where(and(eq(parties.id, id), eq(parties.userId, userId)))
+    .limit(1);
+
   await db.delete(parties).where(and(eq(parties.id, id), eq(parties.userId, userId)));
+  if (row?.logoImageId) await deleteImage(userId, row.logoImageId);
   return { ok: true };
 }
 

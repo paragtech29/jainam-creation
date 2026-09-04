@@ -10,9 +10,11 @@ import {
   unarchiveParty,
   deleteParty,
   findPartiesByName,
+  getPartyById,
   addKarigarToParty,
 } from "@/lib/db/repositories/parties";
 import { partySchema, type PartyInput } from "@/lib/validation/party";
+import { saveUploadedImage } from "@/lib/save-uploaded-image";
 
 export type PartyFormState =
   | {
@@ -100,9 +102,21 @@ export async function createPartyAction(
 
   // HTML forms submit empty optional inputs as "", not absent; storing ""
   // leaves visually-blank-but-present values in nullable columns.
+  // Before the insert: a rejected image should not leave a party behind
+  // that the owner then has to notice and fix.
+  const logo = await saveUploadedImage(userId, formData, "logo", null);
+  if (logo.error) {
+    return {
+      values: readValues(formData),
+      submissionId: (_prevState?.submissionId ?? 0) + 1,
+      error: logo.error,
+    };
+  }
+
   let party;
   try {
     party = await createParty(userId, {
+      logoImageId: logo.imageId,
       name: data.name,
       ownerName1: data.ownerName1,
       ownerName2: data.ownerName2 || null,
@@ -170,7 +184,18 @@ export async function updatePartyAction(
     };
   }
 
+  const existing = await getPartyById(userId, partyId);
+  const updatedLogo = await saveUploadedImage(userId, formData, "logo", existing?.logoImageId);
+  if (updatedLogo.error) {
+    return {
+      values: readValues(formData),
+      submissionId: (_prevState?.submissionId ?? 0) + 1,
+      error: updatedLogo.error,
+    };
+  }
+
   const party = await updateParty(userId, partyId, {
+    logoImageId: updatedLogo.imageId,
     name: data.name,
     ownerName1: data.ownerName1,
     ownerName2: data.ownerName2 || null,

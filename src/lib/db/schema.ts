@@ -15,8 +15,19 @@ import {
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { customType } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
+
+/**
+ * Postgres bytea. drizzle's pg-core ships no helper for it, so this is the
+ * documented customType escape hatch. Values are Node Buffers in and out.
+ */
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return "bytea";
+  },
+});
 
 // ---------- users ----------
 export const users = pgTable("users", {
@@ -30,6 +41,31 @@ export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 
 // ---------- parties ----------
+/**
+ * Uploaded image bytes, in the database rather than an object store — the
+ * owner chose that over Vercel Blob to avoid an account and an API token
+ * (see drizzle/0003). A SEPARATE table because a blob on the parties or
+ * job_works row would be dragged into every list query doing `select *`;
+ * here the bytes are read only by the route that serves one image by id.
+ */
+export const images = pgTable(
+  "images",
+  {
+    id: text("id").primaryKey().$defaultFn(() => createId()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    mimeType: text("mime_type").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    bytes: bytea("bytes").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("images_user_id_idx").on(t.userId)]
+);
+
+export type Image = typeof images.$inferSelect;
+export type NewImage = typeof images.$inferInsert;
+
 export const parties = pgTable(
   "parties",
   {
@@ -44,7 +80,7 @@ export const parties = pgTable(
     email: text("email"),
     contact1: text("contact_1"),
     contact2: text("contact_2"),
-    logoUrl: text("logo_url"),
+    logoImageId: text("logo_image_id").references(() => images.id, { onDelete: "set null" }),
     isArchived: boolean("is_archived").notNull().default(false),
 
     createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -153,8 +189,8 @@ export const jobWorks = pgTable(
     rate: integer("rate").notNull(),   // integer rupees, user-editable, stored not computed-on-read
     total: integer("total").notNull(), // integer rupees, pieces * rate, computed server-side
 
-    photo1Url: text("photo1_url"),
-    photo2Url: text("photo2_url"),
+    photo1ImageId: text("photo1_image_id").references(() => images.id, { onDelete: "set null" }),
+    photo2ImageId: text("photo2_image_id").references(() => images.id, { onDelete: "set null" }),
     comment: text("comment"),
 
     status: jobWorkStatusEnum("status").notNull().default("PENDING"),

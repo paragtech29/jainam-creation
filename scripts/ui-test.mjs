@@ -140,25 +140,44 @@ for (const [name, path] of ROUTES) {
 // happens to hold.
 console.log("\n--- PAGINATION ---");
 
-// These rules cannot be tested with three records. Detect that and skip
-// loudly — reporting a pass or a failure would both be dishonest.
-await page.goto(BASE + "/parties", { waitUntil: "domcontentloaded" });
-await page.waitForTimeout(800);
-const totalParties = await page.evaluate(() => {
-  const m = document.body.innerText.match(/of\s+(\d+)/);
-  return m ? Number(m[1]) : document.querySelectorAll("tbody tr").length;
-});
-const canPage = totalParties > 10;
-if (!canPage) skip("pagination rules", `only ${totalParties} records — run: npm run seed:bulk`);
+// How many records each list actually holds, read from its own "of N".
+// EVERY list needs its own count: deriving one number from the parties list
+// and reusing it for karigars and job works asked for a page those lists do
+// not have, so the pager was legitimately absent and the check failed for the
+// wrong reason. And a hardcoded page=3 needs >20 records, not >10.
+async function lastPageOf(path) {
+  await page.goto(BASE + path, { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(800);
+  const total = await page.evaluate(() => {
+    const m = document.body.innerText.match(/of\s+(\d+)/);
+    return m ? Number(m[1]) : document.querySelectorAll("tbody tr").length;
+  });
+  return { total, lastPage: Math.max(1, Math.ceil(total / 10)) };
+}
+
+const partiesCount = await lastPageOf("/parties");
+const karigarsCount = await lastPageOf("/karigars");
+const jobWorkCount = await lastPageOf("/job-work");
+
+// The rules cannot be tested at all without a second page. Skip loudly —
+// reporting a pass or a failure would both be dishonest.
+const canPage = partiesCount.total > 10;
+if (!canPage) {
+  skip("pagination rules", `only ${partiesCount.total} parties — run: npm run seed:bulk`);
+}
 
 for (const [label, path, expectPager] of [
   ["parties page 1", "/parties", true],
-  ["parties last page", "/parties?page=3", true],
+  ["parties last page", `/parties?page=${partiesCount.lastPage}`, partiesCount.total > 10],
   ["parties single result", "/parties?q=zzzzz", false],
-  ["karigars last page", "/karigars?page=3", true],
-  ["job work last page", "/job-work?page=3", true],
+  ["karigars last page", `/karigars?page=${karigarsCount.lastPage}`, karigarsCount.total > 10],
+  ["job work last page", `/job-work?page=${jobWorkCount.lastPage}`, jobWorkCount.total > 10],
 ]) {
+  // A list with a single page has no pager to place, so there is nothing to
+  // assert about it here — the "no pager for one page" rule is covered by the
+  // single-result case.
   if (!canPage && expectPager) continue;
+  if (!expectPager && !path.includes("q=")) continue;
   await page.goto(BASE + path, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(800);
   const m = await page.evaluate(() => {
@@ -438,6 +457,41 @@ check("no raw zod message reaches the owner",
 // The month picker is the whole point: "how much did I earn from Mayra LAST
 // month" is the question the app was built to answer, and until now the
 // dashboard could only ever show the current one.
+// ─────────────────────────── image upload ───────────────────────────
+// Upload only, never the camera: the owner asked for "just open box select
+// image". A `capture` attribute would make a phone open the camera instead of
+// the picker, so its ABSENCE is the requirement being tested.
+console.log("\n--- IMAGE UPLOAD ---");
+{
+  await page.goto(BASE + "/parties", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(800);
+  await openCreateDialog(page, "Add party");
+
+  check("the party form offers a logo box", await page.isVisible("text=Choose an image"));
+  const hasCapture = await page.evaluate(() =>
+    [...document.querySelectorAll('input[type="file"]')].some((i) => i.hasAttribute("capture"))
+  );
+  check("no camera-capture attribute — picker only", hasCapture === false);
+  check(
+    "only image types are accepted",
+    await page.evaluate(() =>
+      [...document.querySelectorAll('input[type="file"]')].every((i) =>
+        (i.getAttribute("accept") || "").includes("image/")
+      )
+    )
+  );
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(400);
+
+  // The job work form carries two, per the owner's fixed count.
+  await page.goto(BASE + "/job-work/new", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1200);
+  const boxes = await page.evaluate(
+    () => document.querySelectorAll('input[type="file"][name^="photo"]').length
+  );
+  check("the job work form has exactly two photo fields", boxes === 2, "found " + boxes);
+}
+
 console.log("\n--- DASHBOARD ---");
 {
   const text = () => page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));

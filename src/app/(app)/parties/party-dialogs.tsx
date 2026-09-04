@@ -33,6 +33,7 @@ export function PartyDialogs({ rows }: { rows: PartyListRow[] }) {
         party={{
           id: editing.id,
           name: editing.name,
+          logoImageId: editing.logoImageId,
           ownerName1: editing.ownerName1,
           ownerName2: editing.ownerName2,
           address: editing.address,

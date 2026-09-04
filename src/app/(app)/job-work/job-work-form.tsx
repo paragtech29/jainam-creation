@@ -43,6 +43,7 @@ import { DescriptionRows } from "./description-rows";
 import { useDerivedRate } from "./use-derived-rate";
 import { useJobWorkDraft, type JobWorkDraft } from "./use-job-work-draft";
 import { Req } from "@/components/required-mark";
+import { ImageUpload } from "@/components/image-upload";
 
 type JobWorkStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED";
 
@@ -85,6 +86,8 @@ export function JobWorkForm({
     pieces: number;
     rate: number;
     comment: string | null;
+    photo1ImageId: string | null;
+    photo2ImageId: string | null;
     status: JobWorkStatus;
     isBilled: boolean;
     lines: { descriptionTypeId: string; priceUsed: number }[];
@@ -576,8 +579,22 @@ export function JobWorkForm({
           </Field>
           </div>
 
-          {/* Photos are Phase 4's scope — no upload UI here, and photo1Url /
-              photo2Url are never posted from this form. */}
+          {/* Two, as the owner fixed it. Upload only — no camera capture,
+              he was explicit that tapping the box should open the picker. */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <ImageUpload
+              name="photo1"
+              label="Photo 1"
+              hint="Optional. A picture of the maal or the finished work."
+              currentImageId={jobWork?.photo1ImageId}
+            />
+            <ImageUpload
+              name="photo2"
+              label="Photo 2"
+              hint="Optional."
+              currentImageId={jobWork?.photo2ImageId}
+            />
+          </div>
         </FieldSet>
       </FieldGroup>
 

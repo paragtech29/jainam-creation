@@ -92,6 +92,8 @@ export default async function JobWorkDetailPage({
             pieces: jobWork.pieces,
             rate: jobWork.rate,
             comment: jobWork.comment,
+            photo1ImageId: jobWork.photo1ImageId,
+            photo2ImageId: jobWork.photo2ImageId,
             status: jobWork.status,
             isBilled: jobWork.isBilled,
             lines: jobWork.lines.map((l) => ({

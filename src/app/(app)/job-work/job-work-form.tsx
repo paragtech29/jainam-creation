@@ -341,6 +341,64 @@ export function JobWorkForm({
         </FieldSet>
 
         <FieldSet>
+          <FieldLegend variant="label">Design numbers</FieldLegend>
+          <div className="grid gap-4 lg:grid-cols-3">
+
+          <Field>
+            <FieldLabel htmlFor="chalanNo">Chalan No</FieldLabel>
+            <Input
+              id="chalanNo"
+              name="chalanNo"
+              placeholder="767"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={20}
+              title="Numbers only"              value={draft.chalanNo}
+              onChange={(e) => setDraft((d) => ({ ...d, chalanNo: e.target.value }))}
+              className="h-[42px] font-mono tabular-nums"
+            />
+            <FieldDescription>
+              The same chalan no. can be used on more than one job work.
+            </FieldDescription>
+            <FieldError errors={[{ message: state?.fieldErrors?.chalanNo }]} />
+          </Field>
+
+          <Field orientation="responsive">
+            <FieldContent>
+              <FieldLabel htmlFor="partyDesignNo">Party Design No</FieldLabel>
+              <Input
+                id="partyDesignNo"
+                name="partyDesignNo"
+                placeholder="7170"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={20}
+                title="Numbers only"                value={draft.partyDesignNo}
+                onChange={(e) => setDraft((d) => ({ ...d, partyDesignNo: e.target.value }))}
+                className="h-[42px] font-mono tabular-nums"
+              />
+              <FieldError errors={[{ message: state?.fieldErrors?.partyDesignNo }]} />
+            </FieldContent>
+            <FieldContent>
+              <FieldLabel htmlFor="computerDesignNo">Computer Design No</FieldLabel>
+              <Input
+                id="computerDesignNo"
+                name="computerDesignNo"
+                placeholder="4402"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={20}
+                title="Numbers only"                value={draft.computerDesignNo}
+                onChange={(e) => setDraft((d) => ({ ...d, computerDesignNo: e.target.value }))}
+                className="h-[42px] font-mono tabular-nums"
+              />
+              <FieldError errors={[{ message: state?.fieldErrors?.computerDesignNo }]} />
+            </FieldContent>
+          </Field>
+          </div>
+        </FieldSet>
+
+        <FieldSet>
           <FieldLegend variant="label">Work done</FieldLegend>
 
           <DescriptionRows
@@ -435,64 +493,6 @@ export function JobWorkForm({
                 ₹{totalPreview.toLocaleString("en-IN")}
               </span>
             </div>
-          </div>
-        </FieldSet>
-
-        <FieldSet>
-          <FieldLegend variant="label">Design numbers</FieldLegend>
-          <div className="grid gap-4 lg:grid-cols-3">
-
-          <Field>
-            <FieldLabel htmlFor="chalanNo">Chalan No</FieldLabel>
-            <Input
-              id="chalanNo"
-              name="chalanNo"
-              placeholder="767"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={20}
-              title="Numbers only"              value={draft.chalanNo}
-              onChange={(e) => setDraft((d) => ({ ...d, chalanNo: e.target.value }))}
-              className="h-[42px] font-mono tabular-nums"
-            />
-            <FieldDescription>
-              The same chalan no. can be used on more than one job work.
-            </FieldDescription>
-            <FieldError errors={[{ message: state?.fieldErrors?.chalanNo }]} />
-          </Field>
-
-          <Field orientation="responsive">
-            <FieldContent>
-              <FieldLabel htmlFor="partyDesignNo">Party Design No</FieldLabel>
-              <Input
-                id="partyDesignNo"
-                name="partyDesignNo"
-                placeholder="7170"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={20}
-                title="Numbers only"                value={draft.partyDesignNo}
-                onChange={(e) => setDraft((d) => ({ ...d, partyDesignNo: e.target.value }))}
-                className="h-[42px] font-mono tabular-nums"
-              />
-              <FieldError errors={[{ message: state?.fieldErrors?.partyDesignNo }]} />
-            </FieldContent>
-            <FieldContent>
-              <FieldLabel htmlFor="computerDesignNo">Computer Design No</FieldLabel>
-              <Input
-                id="computerDesignNo"
-                name="computerDesignNo"
-                placeholder="4402"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={20}
-                title="Numbers only"                value={draft.computerDesignNo}
-                onChange={(e) => setDraft((d) => ({ ...d, computerDesignNo: e.target.value }))}
-                className="h-[42px] font-mono tabular-nums"
-              />
-              <FieldError errors={[{ message: state?.fieldErrors?.computerDesignNo }]} />
-            </FieldContent>
-          </Field>
           </div>
         </FieldSet>
 

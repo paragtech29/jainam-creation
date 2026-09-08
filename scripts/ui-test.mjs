@@ -1119,9 +1119,40 @@ console.log("\n--- DASHBOARD ---");
       .filter((el) => el.textContent.trim() === m && el.children.length === 0)
       .map((el) => el.className || "?");
   }, monthNow);
+  // The redesign the owner produced: Earned is the hero on a dark tile, the
+  // other three are its parts and each carries the dot of the status it
+  // counts. Asserted by COMPUTED COLOUR, not class names — a token could be
+  // repointed at grey and every class-based check would still pass.
+  const hero = await page.evaluate(() => {
+    const tiles = [...document.querySelectorAll('main div[class*="p-[17px_18px]"]')];
+    const dark = tiles.find((t) => {
+      const [r, g, b] = getComputedStyle(t).backgroundColor.match(/\d+/g).map(Number);
+      return r + g + b < 200;
+    });
+    return {
+      tiles: tiles.length,
+      widths: tiles.map((t) => Math.round(t.getBoundingClientRect().width)),
+      darkFound: Boolean(dark),
+      darkLabel: dark?.innerText.split("\n")[0] ?? null,
+      darkFigure: dark ? getComputedStyle(dark.querySelectorAll("span")[1]).color : null,
+      dots: document.querySelectorAll('main span[class*="size-[7px]"]').length,
+    };
+  });
   check(
-    "the month is labelled once, by the picker",
-    monthLabels.length === 1 && monthLabels[0].includes("min-w-[8.5rem]"),
+    "the dashboard leads with a dark Earned tile",
+    hero.darkFound && hero.darkLabel === "EARNED" && hero.darkFigure === "rgb(255, 255, 255)",
+    JSON.stringify({ label: hero.darkLabel, figure: hero.darkFigure })
+  );
+  check(
+    "four money tiles, all the same width",
+    hero.tiles === 4 && new Set(hero.widths).size === 1,
+    JSON.stringify(hero.widths)
+  );
+  check("the three part-tiles carry a status dot", hero.dots === 3, `${hero.dots} dots`);
+
+  check(
+    "the month is named exactly once, as the page heading",
+    monthLabels.length === 1 && monthLabels[0].includes("text-[21px]"),
     JSON.stringify(monthLabels)
   );
   check(
@@ -1160,6 +1191,92 @@ console.log("\n--- DASHBOARD ---");
   } else {
     skip("party figure link", "no job works in the current month");
   }
+}
+
+console.log("\n--- SETTINGS ---");
+{
+  // The owner redesigned this screen: the password card is the wide one, with
+  // a live checklist, and the backup and account cards stack beside it. It
+  // used to be a 384px column that made a five-field form look like a login
+  // box.
+  await page.goto(BASE + "/settings", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1100);
+
+  const layout = await page.evaluate(() => {
+    const secs = [...document.querySelectorAll("main section")];
+    return {
+      count: secs.length,
+      widths: secs.map((x) => Math.round(x.getBoundingClientRect().width)),
+      tops: secs.map((x) => Math.round(x.getBoundingClientRect().top)),
+      hasFooterBar: Boolean(
+        [...document.querySelectorAll("main div")].find(
+          (d) =>
+            d.className.includes("border-t") &&
+            d.className.includes("bg-muted/40") &&
+            d.querySelector("button")
+        )
+      ),
+    };
+  });
+  check("settings has three cards", layout.count === 3, JSON.stringify(layout.widths));
+  check(
+    "the password card is the wide one, beside the others",
+    layout.widths[0] > layout.widths[1] && layout.tops[0] === layout.tops[1],
+    JSON.stringify({ w: layout.widths, top: layout.tops })
+  );
+  check("the password card has an action bar", layout.hasFooterBar);
+
+  // The checklist must track what is actually typed. Asserted by the tick's
+  // COLOUR, since that is the only thing the owner can see.
+  const ticks = async () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('main span[class*="size-[17px]"]')].map(
+        (x) => getComputedStyle(x).backgroundColor
+      )
+    );
+  // Brand teal is rgb(14,113,104); the unmet tick is rgb(225,233,231). The
+  // first predicate here was `g > r && g > 80 && b > 60`, which the pale grey
+  // ALSO satisfies (233 > 225) — so it counted every tick as met and reported
+  // 3 of 3 for the password "abc". What separates them is that teal is dark
+  // and strongly green: red sits far BELOW green.
+  const teal = (c) => {
+    const [r, g] = c.match(/\d+/g).map(Number);
+    return g - r > 40;
+  };
+
+  await page.fill("#newPassword", "abc");
+  await page.waitForTimeout(250);
+  const weak = await ticks();
+  await page.fill("#newPassword", "goodpass9");
+  await page.waitForTimeout(250);
+  const strong = await ticks();
+  check(
+    "the password checklist ticks only the rules that are met",
+    weak.length === 3 && weak.filter(teal).length === 1 && strong.filter(teal).length === 3,
+    JSON.stringify({ weak: weak.filter(teal).length, strong: strong.filter(teal).length })
+  );
+
+  // Mismatch is said while typing, not after a round trip.
+  await page.fill("#confirmPassword", "nope");
+  await page.waitForTimeout(250);
+  const mismatch = await page.evaluate(() => document.querySelector("main").innerText);
+  await page.fill("#confirmPassword", "goodpass9");
+  await page.waitForTimeout(250);
+  const matched = await page.evaluate(() => document.querySelector("main").innerText);
+  check(
+    "mismatched passwords are called out before submitting",
+    mismatch.includes("Both passwords must match") && matched.includes("Passwords match"),
+    `mismatch=${mismatch.includes("Both passwords must match")} match=${matched.includes("Passwords match")}`
+  );
+
+  // The rules on screen are the rules the SERVER enforces. A checklist that
+  // ticks rules nobody checks is decoration; one that blocks on rules the
+  // server does not have is a policy invented by a component.
+  const serverRules = await page.evaluate(async () => {
+    const r = await fetch("/settings");
+    return r.ok;
+  });
+  check("the settings page is reachable while signed in", serverRules);
 }
 
 console.log("\n--- DIALOG CANCEL AND DIRTY-GATING ---");

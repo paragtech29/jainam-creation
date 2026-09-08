@@ -1,11 +1,14 @@
 import Link from "next/link";
+import { ClipboardList, Building2 } from "lucide-react";
 import { getCurrentUserId } from "@/lib/session";
 import {
   listJobWorksPage,
   getMonthSummary,
   getJobWorkDateRange,
 } from "@/lib/db/repositories/jobWorks";
+import { StatusBadge } from "@/components/status-badge";
 import { MonthPicker } from "./month-picker";
+import { PanelEmpty } from "./panel-empty";
 
 function inr(n: number) {
   return "₹" + n.toLocaleString("en-IN");
@@ -61,39 +64,76 @@ export default async function DashboardPage({
   // The owner's asked-for breakup: what is still to do, what is finished but
   // not invoiced, and what has been billed — as AMOUNTS, since "how much" is
   // the question. Every figure is for the SELECTED month.
+  // Earned is the answer to "how did the month go", so it is the one figure
+  // that does not have to compete: it gets the dark tile. The other three are
+  // its parts, and each carries the dot of the status it counts — the same
+  // four hues the job work list uses, so a colour means one thing everywhere.
+  const earned = {
+    value: inr(summary.total),
+    note: `${summary.count} job ${summary.count === 1 ? "work" : "works"} this month`,
+  };
   const tiles = [
-    { label: "Earned", value: inr(summary.total), note: `${summary.count} job ${summary.count === 1 ? "work" : "works"}` },
-    { label: "Pending", value: inr(summary.pendingTotal + summary.inProgressTotal), note: "not finished yet" },
+    {
+      label: "Pending",
+      value: inr(summary.pendingTotal + summary.inProgressTotal),
+      note: "not finished yet",
+      dot: "bg-status-pending",
+    },
     {
       label: "To invoice",
       value: inr(summary.toInvoiceTotal),
       note: "completed, not billed",
+      dot: "bg-status-progress",
       warn: summary.toInvoiceTotal > 0,
     },
-    { label: "Billed", value: inr(summary.billedTotal), note: "already invoiced" },
+    {
+      label: "Billed",
+      value: inr(summary.billedTotal),
+      note: "already invoiced",
+      dot: "bg-status-billed",
+    },
   ];
 
   const biggest = summary.byParty[0]?.total ?? 0;
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto flex flex-col gap-4">
-      {/* The picker is the ONLY place the month is named. It used to be
-          repeated in a heading to the left of this row, with a subtitle
-          explaining what the picker beside it already made obvious. */}
-      <div className="flex flex-wrap items-center justify-end gap-3">
-        <MonthPicker month={month} label={label} canGoBack={canGoBack} canGoForward={canGoForward} />
+      {/* The month is named ONCE, here, as the heading it is. The picker
+          beside it carries arrows and an escape back to today, but no second
+          copy of the label. */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-[21px] font-bold leading-none tracking-[-0.025em]">{label}</h2>
+        <MonthPicker
+          month={month}
+          isCurrent={month === thisMonth()}
+          canGoBack={canGoBack}
+          canGoForward={canGoForward}
+        />
       </div>
 
-      <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(186px,1fr))]">
+      <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))] xl:[grid-template-columns:repeat(4,minmax(0,1fr))]">
+        <div className="flex flex-col gap-2.5 rounded-[15px] bg-sidebar p-[17px_18px]">
+          <span className="text-[10.5px] font-medium uppercase tracking-[0.13em] text-sidebar-meta">
+            Earned
+          </span>
+          <span className="text-[33px] font-bold leading-none tracking-[-0.035em] tabular-nums text-white">
+            {earned.value}
+          </span>
+          <span className="text-xs text-sidebar-meta">{earned.note}</span>
+        </div>
+
         {tiles.map((t) => (
           <div
             key={t.label}
-            className="flex flex-col gap-2 rounded-[14px] border border-border bg-card p-[15px_17px]"
+            className="flex flex-col gap-2.5 rounded-[15px] border border-border bg-card p-[17px_18px]"
           >
-            <span className="text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              {t.label}
+            <span className="flex items-center gap-[7px]">
+              <span className={`size-[7px] shrink-0 rounded-full ${t.dot}`} aria-hidden="true" />
+              <span className="text-[10.5px] font-medium uppercase tracking-[0.13em] text-muted-foreground">
+                {t.label}
+              </span>
             </span>
-            <span className="text-[29px] font-bold leading-none tracking-[-0.03em] tabular-nums">
+            <span className="text-[33px] font-bold leading-none tracking-[-0.035em] tabular-nums">
               {t.value}
             </span>
             <span className={t.warn ? "text-xs font-medium text-status-pending" : "text-xs text-muted-foreground"}>
@@ -103,7 +143,7 @@ export default async function DashboardPage({
         ))}
       </div>
 
-      <div className="grid items-start gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(330px,1fr))]">
+      <div className="grid items-stretch gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(330px,1fr))] xl:[grid-template-columns:minmax(0,1.55fr)_minmax(0,1fr)]">
         <section className="overflow-hidden rounded-[14px] border border-border bg-card">
           <div className="flex items-baseline justify-between gap-3 border-b border-border px-[18px] py-3.5">
             <span className="text-[14.5px] font-semibold tracking-tight">Recent job work</span>
@@ -113,13 +153,12 @@ export default async function DashboardPage({
           </div>
 
           {recent.length === 0 ? (
-            <p className="px-[18px] py-8 text-center text-sm text-muted-foreground">
-              Nothing recorded yet.{" "}
-              <Link href="/job-work/new" className="font-medium text-primary hover:underline">
-                Add your first job work
-              </Link>
-              .
-            </p>
+            <PanelEmpty
+              icon={<ClipboardList size={21} aria-hidden="true" />}
+              title="Nothing recorded yet"
+              body="Job works you take from a party will show up here."
+              action={{ label: "Record job work", href: "/job-work/new" }}
+            />
           ) : (
             recent.map((r) => (
               <Link
@@ -131,12 +170,17 @@ export default async function DashboardPage({
                   {r.partyName.slice(0, 2).toUpperCase()}
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col leading-tight">
-                  <span className="truncate text-[13.5px] font-medium">{r.partyName}</span>
+                  <span className="truncate text-[13.5px] font-medium">
+                    {r.partyName} · {r.karigarName}
+                  </span>
                   <span className="truncate text-xs text-muted-foreground">
-                    {r.karigarName} · {r.pieces} × ₹{r.rate}
+                    {r.pieces} pcs · {inr(r.total)}
                   </span>
                 </div>
-                <span className="shrink-0 font-mono text-[13px] tabular-nums">{inr(r.total)}</span>
+                {/* The same pill the job work list uses. Where a row is going
+                    matters more at a glance than what it is worth — the money
+                    is already totalled in the tiles above. */}
+                <StatusBadge status={r.status} isBilled={r.isBilled} />
               </Link>
             ))
           )}
@@ -152,9 +196,11 @@ export default async function DashboardPage({
           </div>
 
           {summary.byParty.length === 0 ? (
-            <p className="px-[18px] py-8 text-center text-sm text-muted-foreground">
-              No job works in {label}.
-            </p>
+            <PanelEmpty
+              icon={<Building2 size={21} aria-hidden="true" />}
+              title={`No party work in ${label}`}
+              body="Once job works are recorded, each party's share appears here."
+            />
           ) : (
             <div className="py-2">
               {/* Each row lands on the job work list already filtered to this
@@ -172,12 +218,22 @@ export default async function DashboardPage({
                       {inr(p.total)}
                     </span>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div className="h-[7px] overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full rounded-full bg-brand"
                       style={{ width: biggest > 0 ? `${Math.max(4, (p.total / biggest) * 100)}%` : "0%" }}
                     />
                   </div>
+                  {/* The bar is relative to the BIGGEST party, so it answers
+                      "who is my largest" at a glance. The percentage is of the
+                      whole month, which is the different — and more useful —
+                      question of how much of the month this one party was. */}
+                  <span className="text-[11.5px] text-muted-foreground">
+                    {p.count} job {p.count === 1 ? "work" : "works"}
+                    {summary.total > 0
+                      ? ` · ${Math.round((p.total / summary.total) * 100)}% of the month`
+                      : ""}
+                  </span>
                 </Link>
               ))}
             </div>

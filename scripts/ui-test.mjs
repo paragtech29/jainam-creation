@@ -837,6 +837,70 @@ console.log("\n--- IMAGE UPLOAD ---");
   }
 }
 
+console.log("\n--- FILTER LABELS ---");
+{
+  // A filter label names the COLUMN it filters, not a sentence about it.
+  // "Party name" and "Silai karigar name" sat beside "Status" and "Bill
+  // status", which name their column plainly — and the dropdown does not
+  // filter by name anyway, it filters by record. Pinned because wording is
+  // exactly what keeps being caught by eye rather than by a suite.
+  await page.goto(BASE + "/job-work", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1100);
+  const panel = await page.evaluate(() => {
+    const fields = document.querySelector("#job-work-filter-fields");
+    const card = fields?.parentElement;
+    const seen = (el) => Boolean(el) && el.getClientRects().length > 0;
+    const heading = [...(card?.querySelectorAll("button") ?? [])].find((b) =>
+      b.textContent.trim().startsWith("Filters")
+    );
+    const rows = [...(fields?.children ?? [])].filter(seen).map((el) => {
+      const control = el.querySelector("button, input, [role=combobox]");
+      return {
+        label: el.querySelector("span")?.textContent.trim() ?? "",
+        controlW: control ? Math.round(control.getBoundingClientRect().width) : null,
+        selectW: el.querySelector("[role=combobox]")
+          ? Math.round(el.querySelector("[role=combobox]").getBoundingClientRect().width)
+          : null,
+      };
+    });
+    const dates = [...(fields?.querySelectorAll('input[type="date"]') ?? [])];
+    return {
+      headingVisible: seen(heading),
+      labels: rows.map((r) => r.label),
+      selectWidths: rows.map((r) => r.selectW).filter((w) => w !== null),
+      dateCount: dates.length,
+      // Both halves of the range must sit inside ONE bordered box.
+      oneDateBox:
+        dates.length === 2 &&
+        dates[0].parentElement === dates[1].parentElement &&
+        getComputedStyle(dates[0].parentElement).borderTopWidth !== "0px" &&
+        getComputedStyle(dates[0]).borderTopWidth === "0px",
+    };
+  });
+
+  const want = ["Search", "Date range", "Party", "Silai karigar", "Status", "Bill status"];
+  check(
+    "the job work filters are labelled by what they filter",
+    want.every((w) => panel.labels.includes(w)) && !panel.labels.some((l) => /\bname$/.test(l)),
+    JSON.stringify(panel.labels)
+  );
+  // No heading on a laptop: a row of labelled fields does not need to be told
+  // it is a filter. The same button IS the show/hide control on a phone, so
+  // this is asserted at desktop width only.
+  check("no 'Filters' title on the filter card at desktop width", panel.headingVisible === false);
+  // The from/to pair share one border. Two separate boxes let you set half a
+  // range and wonder why the list did not change.
+  check("the date range is one box, not two", panel.oneDateBox, `dates=${panel.dateCount}`);
+  // Equal widths: the containers matched before this check existed while the
+  // select TRIGGERS inside them sized to their own text (106/113/110/68px
+  // measured), which is exactly the raggedness the owner saw.
+  check(
+    "every filter dropdown is the same width",
+    panel.selectWidths.length >= 4 && new Set(panel.selectWidths).size === 1,
+    JSON.stringify(panel.selectWidths)
+  );
+}
+
 console.log("\n--- CONFIRM DIALOG CHROME ---");
 {
   // The archive/delete confirm used the bare DialogContent defaults — a flat

@@ -837,6 +837,82 @@ console.log("\n--- IMAGE UPLOAD ---");
   }
 }
 
+console.log("\n--- NAVIGATION FEEDBACK ---");
+{
+  // The owner's report: on a phone, tapping Parties did nothing visible for
+  // several seconds, so he concluded navigation was broken and tapped other
+  // tabs. There were no loading.tsx files at all.
+  //
+  // A fast local server cannot reproduce that, so the server is held for 2.5s
+  // ON PURPOSE below and the assertion is that feedback appears well before it
+  // answers. Testing this against an instant response would prove nothing.
+  //
+  // What is asserted per case matters, and was measured before it was written:
+  // on a CLIENT navigation in dev the route cannot commit early, because Next
+  // disables link prefetching in development, so the skeleton cannot paint and
+  // the progress bar is what answers the tap (measured: bar at 158ms, route
+  // committed at 3214ms). On a FULL page load the skeleton streams ahead of
+  // the content, which is asserted against the HTML itself.
+  const SLOW = 2500;
+  const delayed = async (route) => {
+    await new Promise((r) => setTimeout(r, SLOW));
+    // If the test unrouted while this handler was still sleeping, Playwright
+    // has already let the request through — continuing again throws.
+    try {
+      await route.continue();
+    } catch {}
+  };
+
+  for (const href of ["/parties", "/job-work"]) {
+    await page.goto(BASE + "/dashboard", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(900);
+
+    const match = (url) => url.pathname === href;
+    await page.route(match, delayed);
+    const started = Date.now();
+    await page.click(`nav[aria-label="Main"] a[href="${href}"]`);
+
+    let barAt = null;
+    try {
+      await page.waitForSelector(".nav-progress", { state: "attached", timeout: 1200 });
+      barAt = Date.now() - started;
+    } catch {}
+
+    check(
+      `${href}: the progress bar answers the click immediately`,
+      barAt !== null && barAt < 1200,
+      barAt === null ? "no bar before the response" : `${barAt}ms`
+    );
+    check(
+      `${href}: the link itself shows it is working`,
+      (await page.locator(`nav[aria-label="Main"] a[href="${href}"] .animate-spin`).count()) > 0
+    );
+
+    // The delay is left to expire on its own rather than unrouted mid-flight:
+    // unrouting a sleeping handler is what made this check crash instead of
+    // report.
+    await page.waitForURL(`**${href}`, { timeout: 20000 });
+    await page.waitForTimeout(700);
+    await page.unroute(match, delayed);
+    check(
+      `${href}: the bar clears and the sidebar marks the new page`,
+      (await page.locator(".nav-progress").count()) === 0 &&
+        (await page.getAttribute(`nav[aria-label="Main"] a[href="${href}"]`, "aria-current")) === "page"
+    );
+  }
+
+  // loading.tsx is wired for every route: on a full page load the skeleton is
+  // streamed BEFORE the data-dependent content, which is what makes a refresh
+  // on a phone show the shape of the page instead of a white screen. Asserted
+  // against the served HTML, so it cannot be satisfied by a skeleton that only
+  // exists in a component file nobody renders.
+  for (const route of ["/dashboard", "/parties", "/karigars", "/job-work", "/settings"]) {
+    const res = await page.goto(BASE + route, { waitUntil: "domcontentloaded" });
+    const html = await res.text();
+    check(`${route}: streams a loading skeleton on a full load`, html.includes('data-slot="skeleton"'));
+  }
+}
+
 console.log("\n--- FILTER LABELS ---");
 {
   // A filter label names the COLUMN it filters, not a sentence about it.

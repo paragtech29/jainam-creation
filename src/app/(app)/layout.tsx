@@ -7,6 +7,7 @@ import { NavLinks } from "@/components/nav-link";
 import { MobileNav } from "@/components/mobile-nav";
 import { SidebarProfile } from "@/components/sidebar-profile";
 import { PageHeaderBar } from "@/components/page-header-bar";
+import { NavProgress } from "@/components/nav-progress";
 
 export default async function AppLayout({
   children,
@@ -39,6 +40,9 @@ export default async function AppLayout({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        {/* Above the header on purpose: a route change should be visible
+            without looking at the thing you tapped. */}
+        <NavProgress />
         <PageHeaderBar mobileNav={<MobileNav profile={profile} />} />
 
         <main className="flex min-h-0 w-full flex-1 flex-col overflow-hidden px-[22px] pb-[22px] pt-[22px]">

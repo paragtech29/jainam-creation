@@ -362,3 +362,59 @@ input[type="search"]::-webkit-search-results-decoration {
     print-color-adjust: exact;
   }
 }
+
+/* ─── Loading shimmer ──────────────────────────────────────────
+   A sweep rather than a pulse. A pulse fades the whole block in and out,
+   which at a glance reads as content that is there and flickering; a sweep
+   travelling left to right reads as work in progress. Stops entirely for
+   prefers-reduced-motion, where the block simply sits at its base tone —
+   still visibly a placeholder, just not moving.
+   ───────────────────────────────────────────────────────────── */
+@keyframes shimmer-sweep {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+.shimmer {
+  background-image: linear-gradient(
+    90deg,
+    var(--muted) 0%,
+    color-mix(in oklch, var(--muted), white 55%) 50%,
+    var(--muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-sweep 1.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer {
+    animation: none;
+    background-image: none;
+  }
+}
+
+/* ─── Navigation progress bar ──────────────────────────────────
+   Runs while a route change is in flight. It eases towards the right and
+   deliberately never reaches the end: the real duration is unknown, and a bar
+   that sits full while still loading is a lie. It is removed the moment the
+   new route commits.
+
+   Under prefers-reduced-motion it does not travel — it holds a steady bar
+   instead, which still answers "something is happening".
+   ───────────────────────────────────────────────────────────── */
+@keyframes nav-progress-run {
+  0% { transform: translateX(-100%); }
+  55% { transform: translateX(-28%); }
+  100% { transform: translateX(-12%); }
+}
+
+.nav-progress {
+  animation: nav-progress-run 1.6s cubic-bezier(0.16, 0.84, 0.44, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-progress {
+    animation: none;
+    transform: translateX(-12%);
+  }
+}

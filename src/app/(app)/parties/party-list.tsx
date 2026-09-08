@@ -1,4 +1,5 @@
 import { RecordTrigger } from "@/components/record-trigger";
+import { EntityAvatar } from "@/components/entity-avatar";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import type { PartyListRow } from "@/lib/db/repositories/parties";
@@ -37,6 +38,7 @@ export function PartyList({
               ariaLabel={`Edit ${p.name}`}
               className="flex min-w-0 flex-1 items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
+              <EntityAvatar name={p.name} imageId={p.logoImageId} size="md" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="truncate font-medium">{p.name}</span>
@@ -91,9 +93,10 @@ export function PartyList({
                     kind="party"
                     id={p.id}
                     ariaLabel={`Edit ${p.name}`}
-                    className="flex items-center gap-2 font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="flex items-center gap-2.5 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    {p.name}
+                    <EntityAvatar name={p.name} imageId={p.logoImageId} size="sm" />
+                    <span className="hover:underline">{p.name}</span>
                     {p.isArchived ? <Badge variant="secondary">Archived</Badge> : null}
                   </RecordTrigger>
                 </td>

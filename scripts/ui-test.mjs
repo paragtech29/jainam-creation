@@ -606,7 +606,34 @@ console.log("\n--- IMAGE UPLOAD ---");
   await page.waitForTimeout(800);
   await openCreateDialog(page, "Add party");
 
-  check("the party form offers a logo box", await page.isVisible("text=Choose an image"));
+  check("the party form offers a logo picker", await page.isVisible("text=Choose image"));
+
+  // A logo is a small mark. It used to get a 132px full-width drop zone with
+  // a tiny image centred in all that emptiness — the owner's complaint. The
+  // control must stay compact and share its row with the party name.
+  const logo = await page.evaluate(() => {
+    const d = document.querySelector('[role="dialog"]');
+    const label = [...d.querySelectorAll("span")].find((s) => s.textContent.trim() === "Logo");
+    const field = label?.parentElement;
+    const nameInput = d.querySelector('input[name="name"]');
+    return {
+      dialogW: Math.round(d.getBoundingClientRect().width),
+      logoW: field ? Math.round(field.getBoundingClientRect().width) : null,
+      logoTop: field ? Math.round(field.getBoundingClientRect().top) : null,
+      nameTop: nameInput ? Math.round(nameInput.getBoundingClientRect().top) : null,
+    };
+  });
+  check(
+    "the logo control does NOT span the dialog",
+    logo.logoW !== null && logo.logoW < logo.dialogW * 0.7,
+    `logo=${logo.logoW} dialog=${logo.dialogW}`
+  );
+  check(
+    "logo and party name share a row",
+    logo.logoTop !== null && logo.nameTop !== null && Math.abs(logo.logoTop - logo.nameTop) < 60,
+    `logoTop=${logo.logoTop} nameTop=${logo.nameTop}`
+  );
+
   const hasCapture = await page.evaluate(() =>
     [...document.querySelectorAll('input[type="file"]')].some((i) => i.hasAttribute("capture"))
   );
@@ -629,6 +656,36 @@ console.log("\n--- IMAGE UPLOAD ---");
     () => document.querySelectorAll('input[type="file"][name^="photo"]').length
   );
   check("the job work form has exactly two photo fields", boxes === 2, "found " + boxes);
+
+  // The list's first column leads with the logo. Every row must carry one —
+  // an image if there is a logo, initials if not. A column that is populated
+  // for some rows and empty for others looks broken rather than optional.
+  await page.goto(BASE + "/parties", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1000);
+  const rows = await page.evaluate(() => {
+    const trs = [...document.querySelectorAll("table tbody tr")];
+    return trs.map((r) => {
+      const cell = r.querySelector("td");
+      const img = cell?.querySelector("img");
+      const initials = cell?.querySelector("span[aria-hidden='true']");
+      const holder = (img || initials)?.parentElement;
+      return {
+        hasMark: Boolean(img || initials),
+        round: holder ? getComputedStyle(holder).borderRadius : null,
+        width: holder ? Math.round(holder.getBoundingClientRect().width) : null,
+      };
+    });
+  });
+  if (rows.length === 0) {
+    skip("party list avatars", "no parties to show");
+  } else {
+    check("every party row leads with a logo or initials", rows.every((r) => r.hasMark), `${rows.length} rows`);
+    check(
+      "the mark is round and small",
+      rows.every((r) => r.width !== null && r.width <= 40 && r.round !== "0px"),
+      JSON.stringify(rows[0])
+    );
+  }
 }
 
 console.log("\n--- DASHBOARD ---");

@@ -105,17 +105,19 @@ export function PartyForm({ party }: { party?: PartyFormValues }) {
           footer, which looked broken. */}
       <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-5 sm:p-6">
       <FieldSet>
-        <div className="grid gap-x-4 gap-y-4 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
-        <Field className="[grid-column:1/-1]">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        <Field className="sm:w-auto sm:shrink-0">
           <ImageUpload
             name="logo"
             label="Logo"
-            hint="Optional. Shown next to the party name."
+            variant="avatar"
+            entityName={party?.name ?? "New party"}
+            hint="Optional. Shown beside the party name in the list."
             currentImageId={party?.logoImageId}
             onChanged={markDirty}
           />
         </Field>
-        <Field className="[grid-column:1/-1]">
+        <Field className="min-w-0 flex-1">
           <FieldLabel htmlFor="name">Party name <Req /></FieldLabel>
           <Input
             id="name"

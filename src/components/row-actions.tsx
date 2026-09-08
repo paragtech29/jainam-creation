@@ -1,16 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Archive, ArchiveRestore, Trash2, Loader2 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { Archive, ArchiveRestore, Trash2 } from "lucide-react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Pending = "archive" | "unarchive" | "delete" | null;
@@ -18,10 +10,9 @@ type Pending = "archive" | "unarchive" | "delete" | null;
 /**
  * Archive / unarchive / delete, as icon buttons on a list row.
  *
- * Both destructive-ish actions confirm first — but they say different things,
- * because they ARE different: archiving is reversible and keeps history,
- * deleting is permanent. Delete is only rendered when the record has no job
- * works at all, so the "permanent" wording is always literally true.
+ * Both destructive-ish actions confirm first, through the shared
+ * ConfirmDialog so the question wears the same chrome as the add/edit dialogs
+ * one click away.
  */
 export function RowActions({
   name,
@@ -105,64 +96,46 @@ export function RowActions({
         ) : null}
       </div>
 
-      <Dialog open={confirming !== null} onOpenChange={(o) => !o && setConfirming(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {confirming === "delete"
-                ? `Delete ${name}?`
-                : confirming === "unarchive"
-                  ? `Unarchive ${name}?`
-                  : `Archive ${name}?`}
-            </DialogTitle>
-            <DialogDescription>
-              {confirming === "delete"
-                ? `This permanently removes ${name}. It has no job works, so nothing else is affected. This cannot be undone.`
-                : confirming === "unarchive"
-                  ? `${name} will be offered again when you record a job work.`
-                  : `${name} stops being offered on new job works. Existing job works are not changed, and you can unarchive at any time.`}
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setConfirming(null)}
-              disabled={isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant={confirming === "delete" ? "destructive" : "default"}
-              disabled={isPending}
-              onClick={() =>
-                run(
-                  confirming === "delete"
-                    ? onDelete
-                    : confirming === "unarchive"
-                      ? onUnarchive
-                      : onArchive
-                )
-              }
-            >
-              {isPending ? (
-                <>
-                  <Loader2 size={15} className="animate-spin" aria-hidden="true" />
-                  Working…
-                </>
-              ) : confirming === "delete" ? (
-                `Delete ${noun}`
-              ) : confirming === "unarchive" ? (
-                "Unarchive"
-              ) : (
-                "Archive"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* The wording differs per action because the ACTIONS differ: archiving
+          is reversible and keeps history, deleting is permanent. Delete is
+          only offered when the record has no job works, so "permanent" is
+          always literally true. */}
+      <ConfirmDialog
+        open={confirming !== null}
+        onOpenChange={(o) => !o && setConfirming(null)}
+        title={
+          confirming === "delete"
+            ? `Delete ${name}?`
+            : confirming === "unarchive"
+              ? `Unarchive ${name}?`
+              : `Archive ${name}?`
+        }
+        body={
+          confirming === "delete"
+            ? `This permanently removes ${name}. It has no job works, so nothing else is affected. This cannot be undone.`
+            : confirming === "unarchive"
+              ? `${name} will be offered again when you record a job work.`
+              : `${name} stops being offered on new job works. Existing job works are not changed, and you can unarchive at any time.`
+        }
+        confirmLabel={
+          confirming === "delete"
+            ? `Delete ${noun}`
+            : confirming === "unarchive"
+              ? "Unarchive"
+              : "Archive"
+        }
+        destructive={confirming === "delete"}
+        pending={isPending}
+        onConfirm={() =>
+          run(
+            confirming === "delete"
+              ? onDelete
+              : confirming === "unarchive"
+                ? onUnarchive
+                : onArchive
+          )
+        }
+      />
     </>
   );
 }

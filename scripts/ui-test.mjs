@@ -837,6 +837,124 @@ console.log("\n--- IMAGE UPLOAD ---");
   }
 }
 
+console.log("\n--- CONFIRM DIALOG CHROME ---");
+{
+  // The archive/delete confirm used the bare DialogContent defaults — a flat
+  // p-4 box with h-8 buttons — while the add/edit dialog one click away had a
+  // bordered header, a padded body and a muted footer bar with h-10 buttons.
+  // The owner saw two dialogs from two different applications, and the small
+  // buttons read as far more curved because 14px of radius on a 32px-tall
+  // button is nearly a pill. These checks compare the two dialogs against
+  // EACH OTHER rather than against hardcoded pixels, so they keep holding if
+  // the design moves.
+  const shell = () =>
+    page.evaluate(() => {
+      const d = document.querySelector('[role="dialog"]');
+      const cs = getComputedStyle(d);
+      const primary = [...d.querySelectorAll("button")]
+        .filter((b) => b.textContent.trim() && !b.querySelector(".sr-only"))
+        .pop();
+      const ps = primary ? getComputedStyle(primary) : null;
+      return {
+        radius: cs.borderRadius,
+        bands: [...d.children]
+          .filter((c) => c.tagName !== "BUTTON")
+          .map((c) => {
+            const st = getComputedStyle(c);
+            return {
+              top: st.borderTopWidth,
+              bottom: st.borderBottomWidth,
+              tinted: st.backgroundColor !== "rgba(0, 0, 0, 0)",
+              padded: st.paddingLeft !== "0px",
+            };
+          }),
+        primary: primary
+          ? {
+              text: primary.textContent.trim(),
+              h: Math.round(primary.getBoundingClientRect().height),
+              radius: ps.borderRadius,
+              bg: ps.backgroundColor,
+            }
+          : null,
+      };
+    });
+
+  await page.goto(BASE + "/parties", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(900);
+  await openCreateDialog(page, "Add party");
+  await page.waitForTimeout(400);
+  const form = await shell();
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(400);
+
+  // This run's OWN row, never the owner's. Nothing is confirmed here — the
+  // dialog is opened, measured and cancelled.
+  const archiveBtn = page.locator(`button[aria-label="Archive ${TAG} Party"]:visible`).first();
+  if ((await archiveBtn.count()) === 0) {
+    skip("confirm dialog chrome", "this run's party row is not on this page");
+  } else {
+    await archiveBtn.click();
+    await page.waitForSelector('[role="dialog"]');
+    await page.waitForTimeout(400);
+    const confirm = await shell();
+
+    check(
+      "the confirm dialog has a header, a body and a footer band",
+      confirm.bands.length === 3 &&
+        confirm.bands[0].bottom !== "0px" &&
+        confirm.bands[1].padded &&
+        confirm.bands[2].top !== "0px" &&
+        confirm.bands[2].tinted,
+      JSON.stringify(confirm.bands)
+    );
+    check(
+      "the confirm dialog is curved exactly like the add dialog",
+      confirm.radius === form.radius,
+      `confirm=${confirm.radius} form=${form.radius}`
+    );
+    check(
+      "its primary button matches the add dialog's primary button",
+      Boolean(confirm.primary && form.primary) &&
+        confirm.primary.h === form.primary.h &&
+        confirm.primary.radius === form.primary.radius &&
+        confirm.primary.bg === form.primary.bg,
+      `confirm=${JSON.stringify(confirm.primary)} form=${JSON.stringify(form.primary)}`
+    );
+
+    await page.click('[role="dialog"] button:has-text("Cancel")');
+    await page.waitForTimeout(500);
+    check(
+      "Cancel closes the confirm without archiving",
+      (await page.locator('[role="dialog"]').count()) === 0 &&
+        (await page.locator(`text=${TAG} Party`).count()) > 0
+    );
+
+    // Delete is the same shell in red, and it must be the loudest control in
+    // the dialog rather than the tinted secondary it used to be.
+    const deleteBtn = page.locator(`button[aria-label="Delete ${TAG} Party"]:visible`).first();
+    if ((await deleteBtn.count()) === 0) {
+      skip("delete confirm is solid red", "no deletable row");
+    } else {
+      await deleteBtn.click();
+      await page.waitForSelector('[role="dialog"]');
+      await page.waitForTimeout(400);
+      const del = await shell();
+      const rgb = (del.primary?.bg || "").match(/[0-9]+/g)?.map(Number) ?? [];
+      check(
+        "the delete confirm's button is solid red, not a tint",
+        rgb.length >= 3 &&
+          rgb[0] > 200 &&
+          rgb[1] < 120 &&
+          rgb[2] < 120 &&
+          del.primary.h === form.primary.h,
+        `bg=${del.primary?.bg} h=${del.primary?.h}`
+      );
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(300);
+    }
+  }
+}
+
 console.log("\n--- DASHBOARD ---");
 {
   const text = () => page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));

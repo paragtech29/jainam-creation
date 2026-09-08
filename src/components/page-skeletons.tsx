@@ -80,7 +80,10 @@ export function JobWorkPageSkeleton() {
 export function DashboardSkeleton() {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5">
-      <Skeleton className="h-10 w-[236px] rounded-[10px]" />
+      {/* Right-aligned, matching the month picker it stands in for. A
+          left-aligned placeholder would make the picker jump across the row
+          the moment the data arrived. */}
+      <Skeleton className="ml-auto h-9 w-[236px] rounded-[10px]" />
 
       <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(190px,1fr))]">
         {Array.from({ length: 4 }, (_, i) => (

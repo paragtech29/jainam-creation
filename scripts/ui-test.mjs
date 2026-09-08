@@ -1104,6 +1104,31 @@ console.log("\n--- DASHBOARD ---");
   const monthNow = new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" });
   check("the dashboard opens on the current month", (await text()).includes(monthNow), monthNow);
 
+  // The month is named ONCE, by the picker. It used to be printed again in a
+  // heading on the left of the same row, with a subtitle explaining what the
+  // picker beside it already made obvious.
+  // Counts ELEMENTS whose entire text is the month, not text nodes: JSX
+  // splits "No job works in {label}." into three nodes, one of which is
+  // exactly the month, so a text-node count reported that sentence as a
+  // duplicate label. That sentence keeps its month deliberately — there it is
+  // a statement, not a label. Exactly one label is allowed and it is the
+  // picker's.
+  const monthLabels = await page.evaluate((m) => {
+    const main = document.querySelector("main");
+    return [...(main?.querySelectorAll("*") ?? [])]
+      .filter((el) => el.textContent.trim() === m && el.children.length === 0)
+      .map((el) => el.className || "?");
+  }, monthNow);
+  check(
+    "the month is labelled once, by the picker",
+    monthLabels.length === 1 && monthLabels[0].includes("min-w-[8.5rem]"),
+    JSON.stringify(monthLabels)
+  );
+  check(
+    "no redundant 'for this month' subtitle",
+    !(await text()).includes("Every figure below is for this month")
+  );
+
   // Step back a month and confirm the view actually moved and persisted.
   const back = page.locator('button[aria-label="Previous month"]');
   if ((await back.count()) && !(await back.isDisabled())) {

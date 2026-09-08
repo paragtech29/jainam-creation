@@ -77,13 +77,10 @@ export default async function DashboardPage({
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-col leading-tight">
-          <span className="text-[14.5px] font-semibold tracking-tight">{label}</span>
-          <span className="text-xs text-muted-foreground">
-            Every figure below is for this month
-          </span>
-        </div>
+      {/* The picker is the ONLY place the month is named. It used to be
+          repeated in a heading to the left of this row, with a subtitle
+          explaining what the picker beside it already made obvious. */}
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <MonthPicker month={month} label={label} canGoBack={canGoBack} canGoForward={canGoForward} />
       </div>
 
@@ -147,8 +144,11 @@ export default async function DashboardPage({
 
         <section className="overflow-hidden rounded-[14px] border border-border bg-card">
           <div className="flex items-baseline justify-between gap-3 border-b border-border px-[18px] py-3.5">
+            {/* No month label here either: the picker names it once for the
+                whole screen. The empty-state sentence below still says the
+                month, because there it is a statement rather than a label —
+                "nothing in THIS month" is the useful part. */}
             <span className="text-[14.5px] font-semibold tracking-tight">Work by party</span>
-            <span className="text-xs text-muted-foreground">{label}</span>
           </div>
 
           {summary.byParty.length === 0 ? (

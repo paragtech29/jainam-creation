@@ -12,7 +12,10 @@
 // Env: BASE_URL, UI_USER, UI_PASS, SHOT_DIR, ONLY_VP, ONLY
 import { chromium } from "playwright";
 import ExcelJS from "exceljs";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { deflateSync, inflateSync } from "node:zlib";
 
 const BASE = process.env.BASE_URL || "http://localhost:3000";
 const USER = process.env.UI_USER || "testowner";
@@ -51,6 +54,108 @@ const failures = [];
 
 // A pagination rule cannot be tested with three records. Skipping loudly is
 // honest; reporting a pass or a failure would both be lies.
+// A 3:1 PORTRAIT image, solid magenta. The aspect ratio is the whole point:
+// the owner's logo is taller than it is wide, and `object-cover` fills a
+// square by cutting the top and bottom off exactly such an image.
+function tallTestPng(w = 60, h = 180) {
+  const raw = Buffer.alloc((w * 3 + 1) * h);
+  for (let y = 0; y < h; y++) {
+    const row = y * (w * 3 + 1);
+    raw[row] = 0; // filter: none
+    for (let x = 0; x < w; x++) {
+      raw[row + 1 + x * 3] = 255;
+      raw[row + 2 + x * 3] = 0;
+      raw[row + 3 + x * 3] = 255;
+    }
+  }
+  const chunk = (type, data) => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(body) >>> 0);
+    return Buffer.concat([len, body, crc]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(w, 0);
+  ihdr.writeUInt32BE(h, 4);
+  ihdr[8] = 8; // bit depth
+  ihdr[9] = 2; // truecolour
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk("IHDR", ihdr),
+    chunk("IDAT", deflateSync(raw)),
+    chunk("IEND", Buffer.alloc(0)),
+  ]);
+}
+
+let CRC_TABLE = null;
+function crc32(buf) {
+  if (!CRC_TABLE) {
+    CRC_TABLE = new Int32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      CRC_TABLE[n] = c;
+    }
+  }
+  let c = -1;
+  for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+  return c ^ -1;
+}
+
+// Decodes what Playwright hands back from a screenshot: non-interlaced,
+// 8-bit RGB or RGBA, with per-scanline filters. Enough to sample a pixel,
+// which is the only claim being made here.
+function decodePng(buf) {
+  let p = 8, w = 0, h = 0, channels = 3;
+  const idat = [];
+  while (p < buf.length) {
+    const len = buf.readUInt32BE(p);
+    const type = buf.toString("ascii", p + 4, p + 8);
+    const data = buf.subarray(p + 8, p + 8 + len);
+    if (type === "IHDR") {
+      w = data.readUInt32BE(0);
+      h = data.readUInt32BE(4);
+      if (data[8] !== 8) throw new Error("only 8-bit PNGs");
+      channels = data[9] === 6 ? 4 : data[9] === 2 ? 3 : null;
+      if (!channels) throw new Error("unsupported colour type " + data[9]);
+    } else if (type === "IDAT") idat.push(Buffer.from(data));
+    else if (type === "IEND") break;
+    p += 12 + len;
+  }
+  const raw = inflateSync(Buffer.concat(idat));
+  const stride = w * channels;
+  const out = Buffer.alloc(stride * h);
+  for (let y = 0; y < h; y++) {
+    const filter = raw[y * (stride + 1)];
+    const line = raw.subarray(y * (stride + 1) + 1, y * (stride + 1) + 1 + stride);
+    for (let i = 0; i < stride; i++) {
+      const a = i >= channels ? out[y * stride + i - channels] : 0;
+      const b = y > 0 ? out[(y - 1) * stride + i] : 0;
+      const c = i >= channels && y > 0 ? out[(y - 1) * stride + i - channels] : 0;
+      let v = line[i];
+      if (filter === 1) v += a;
+      else if (filter === 2) v += b;
+      else if (filter === 3) v += (a + b) >> 1;
+      else if (filter === 4) {
+        const pa = Math.abs(b - c), pb = Math.abs(a - c), pc = Math.abs(a + b - 2 * c);
+        v += pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+      }
+      out[y * stride + i] = v & 0xff;
+    }
+  }
+  return {
+    w, h,
+    at(x, y) {
+      const i = y * stride + x * channels;
+      return [out[i], out[i + 1], out[i + 2]];
+    },
+  };
+}
+
+const isMagenta = ([r, g, b]) => r > 170 && g < 110 && b > 170;
+
 function skip(label, why) {
   skipped++;
   console.log(`SKIP - ${label}  (${why})`);
@@ -633,6 +738,50 @@ console.log("\n--- IMAGE UPLOAD ---");
     logo.logoTop !== null && logo.nameTop !== null && Math.abs(logo.logoTop - logo.nameTop) < 60,
     `logoTop=${logo.logoTop} nameTop=${logo.nameTop}`
   );
+
+  // THE LOGO MUST NOT BE CROPPED. A 3:1 portrait image is uploaded and the
+  // rendered circle is then screenshotted and sampled: with `object-cover`
+  // the tall image is blown up to fill the square and its top and bottom are
+  // cut away, so every pixel across the middle row reads as image. Contained,
+  // it is letterboxed — image down the centre, card background at the left
+  // and right edges. Sampling pixels is deliberate: asserting
+  // `objectFit === "contain"` would only restate the CSS back to itself.
+  const tallFile = join(tmpdir(), "jc-tall-logo.png");
+  writeFileSync(tallFile, tallTestPng());
+  await page.setInputFiles('[role="dialog"] input[type="file"]:not([name])', tallFile);
+  await page.waitForSelector('[role="dialog"] img', { timeout: 8000 });
+  await page.waitForTimeout(500);
+
+  // The IMG's own box, not its padded wrapper. Sampling the wrapper was the
+  // first version of this check and it was vacuous: a 6% inset of a 64px
+  // circle lands inside the 6px padding, which is card background whatever
+  // the object-fit is, so the check passed with object-cover still in place.
+  const markBox = await page.evaluate(() => {
+    const r = document.querySelector('[role="dialog"] img').getBoundingClientRect();
+    return { x: r.x, y: r.y, width: r.width, height: r.height };
+  });
+  const shot = decodePng(await page.screenshot({ clip: markBox }));
+  const midY = Math.floor(shot.h / 2);
+  const centre = shot.at(Math.floor(shot.w / 2), midY);
+  // 6% in from each side, on the middle row — inside the circle, but outside
+  // where a contained 1:3 image can reach.
+  const inset = Math.max(2, Math.floor(shot.w * 0.06));
+  const left = shot.at(inset, midY);
+  const right = shot.at(shot.w - 1 - inset, midY);
+
+  check(
+    "the uploaded logo actually renders",
+    isMagenta(centre),
+    `centre=${centre.join(",")}`
+  );
+  check(
+    "a tall logo is contained, not cropped top and bottom",
+    !isMagenta(left) && !isMagenta(right),
+    `left=${left.join(",")} right=${right.join(",")}`
+  );
+
+  await page.click('[role="dialog"] button:has-text("Remove")');
+  await page.waitForTimeout(300);
 
   const hasCapture = await page.evaluate(() =>
     [...document.querySelectorAll('input[type="file"]')].some((i) => i.hasAttribute("capture"))

@@ -320,6 +320,51 @@ for (const [label, path, expectPager] of [
 }
 
 // ─────────────────────────── party validation ───────────────────────────
+console.log("\n--- A DEEP PAGE STAYS PUT ---");
+{
+  // Opening a list at ?page=7 used to snap back to page 1 about a third of a
+  // second later. The search box's debounce was firing on mount — it skipped
+  // its first run with a ref, and React invokes effects twice in development,
+  // so the second invocation went ahead and pushed a URL with `page` deleted.
+  //
+  // Every earlier pagination check navigated and asserted IMMEDIATELY, so all
+  // of them passed while the bug was live. This one waits past the debounce
+  // on purpose: the whole defect lives in that window.
+  const { total: jwTotal, lastPage: deep } = await lastPageOf("/job-work");
+  if (jwTotal <= 10) {
+    skip("a deep page stays put", `only ${jwTotal} job works — no second page`);
+  } else {
+    await page.goto(`${BASE}/job-work?page=${deep}`, { waitUntil: "domcontentloaded" });
+    // Comfortably past the 300ms debounce, and past a slow re-render.
+    await page.waitForTimeout(2200);
+    const after = await page.evaluate(() => {
+      const t = document.body.innerText.replace(/\s+/g, " ");
+      return {
+        search: location.search,
+        pageLabel: (t.match(/Page (\d+) of (\d+)/) || []).slice(1).join("/"),
+        rows: document.querySelectorAll("tbody tr").length,
+      };
+    });
+    check(
+      `page ${deep} is still page ${deep} a second later`,
+      after.search.includes(`page=${deep}`) && after.pageLabel.startsWith(`${deep}/`),
+      JSON.stringify(after)
+    );
+
+    // The reset itself is wanted — when it comes from an actual search.
+    await page.fill('input[type="search"]', "zzzz-no-such-thing");
+    await page.waitForTimeout(1400);
+    const searched = await page.evaluate(() => location.search);
+    check(
+      "a real search still clears the page number",
+      searched.includes("q=") && !searched.includes("page="),
+      searched
+    );
+    await page.goto(BASE + "/job-work", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(600);
+  }
+}
+
 console.log("\n--- PARTY VALIDATION ---");
 await page.goto(BASE + "/parties", { waitUntil: "domcontentloaded" });
 await page.waitForTimeout(800);
@@ -664,11 +709,11 @@ console.log("\n--- EXPORT ---");
       const summed = body.reduce((a, r) => a + Number(r.getCell(totalCol).value || 0), 0);
       const stated = Number(totalRow.getCell(totalCol).value || 0);
       check("the grand total equals the sum of its own rows", summed === stated, `rows=${summed} stated=${stated}`);
-      check(
-        "and equals the total shown on screen",
-        stated === Number((screen.total ?? "0").replace(/,/g, "")),
-        `xlsx=${stated} screen=${screen.total}`
-      );
+      // There is no on-screen total to compare against any more — the job work
+      // footer is pagination only since the owner asked for the view total to
+      // go. What still matters is that the file adds up to itself, which the
+      // check above asserts, and that it holds every row, which the row-count
+      // check asserts.
 
       const piecesCol = head.indexOf("Pieces") + 1;
       check(
@@ -2038,9 +2083,13 @@ console.log("\n--- REPORTS ---");
     const onScreen = await table();
     let file = null;
     try {
+      // Open the menu, then take the Excel item — the export stopped being a
+      // single link when PDF was added beside it.
+      await page.click('button:has-text("Export")');
+      await page.waitForTimeout(400);
       const [dl] = await Promise.all([
         page.waitForEvent("download", { timeout: 20000 }),
-        page.click('a:has-text("Export")'),
+        page.locator('a:has-text("Excel")').click(),
       ]);
       const wb = new ExcelJS.Workbook();
       await wb.xlsx.readFile(await dl.path());

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +24,6 @@ export function SearchInput({
   const urlQuery = params.get("q") ?? "";
 
   const [value, setValue] = useState(urlQuery);
-  const first = useRef(true);
 
   const [seenUrlQuery, setSeenUrlQuery] = useState(urlQuery);
 
@@ -48,22 +47,29 @@ export function SearchInput({
     if (urlQuery !== value.trim()) setValue(urlQuery);
   }
 
+  // Push only when the box and the URL actually DISAGREE.
+  //
+  // This used to skip the first run with a `first` ref instead, and that is
+  // why opening any list at ?page=7 silently jumped back to page 1 about a
+  // third of a second later: React invokes effects twice in development, the
+  // first invocation spent the ref, and the second went on to schedule a push
+  // that deletes `page` — a search reset nobody had asked for. Counting
+  // invocations is fragile; comparing state to the URL is not, because on
+  // mount they agree by definition, and after our own push they agree again.
   useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      return;
-    }
+    const trimmed = value.trim();
+    if (trimmed === urlQuery) return;
+
     const t = setTimeout(() => {
       const next = new URLSearchParams(params.toString());
-      const trimmed = value.trim();
       if (trimmed) next.set("q", trimmed);
       else next.delete("q");
-      next.delete("page"); // a new search always starts at page 1
+      next.delete("page"); // a NEW SEARCH starts at page 1 — but only a new one
       router.replace(`${pathname}?${next.toString()}`, { scroll: false });
     }, 300);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  }, [value, urlQuery]);
 
   return (
     <div className={cn("relative w-full sm:max-w-xs", className)}>

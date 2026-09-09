@@ -1781,6 +1781,85 @@ console.log("\n--- JOB WORK FORM ACTIONS ---");
   check("exactly one 'Back to job work' link", seen[0].backLinks === 1, `${seen[0].backLinks} links`);
 }
 
+console.log("\n--- DELETE SITS WITH THE OTHER ACTIONS ---");
+{
+  // The delete control used to be a "Danger zone" card below the form: a
+  // separator, a heading and a full-width button, furthest from the actions it
+  // belongs with. It is now in the form's own bar beside Save changes.
+  //
+  // This opens the owner's existing job work and CANCELS the dialog — it never
+  // confirms. The deletion itself was driven end to end on a throwaway record
+  // (created and destroyed in the same run, verified against the database);
+  // repeating that on every suite run would mean creating a job work each
+  // time, which needs a description type and leaves rows behind.
+  await page.goto(BASE + "/job-work", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1100);
+  const firstHref = await page.evaluate(() => {
+    const a = [...document.querySelectorAll("tbody tr a")].find((x) =>
+      /\/job-work\/[^/?]+$/.test(x.getAttribute("href") || "")
+    );
+    return a?.getAttribute("href") ?? null;
+  });
+
+  if (!firstHref) {
+    skip("delete beside save", "no job work to open");
+  } else {
+    await page.goto(BASE + firstHref, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(1500);
+
+    const bar = await page.evaluate(() => {
+      const text = document.querySelector("main").innerText;
+      const find = (re) =>
+        [...document.querySelectorAll("button, a")].find((x) => re.test(x.textContent || ""));
+      const del = find(/^\s*Delete\s*$/);
+      const save = find(/Save changes/);
+      const top = (el) => (el ? Math.round(el.getBoundingClientRect().top) : null);
+      const left = (el) => (el ? Math.round(el.getBoundingClientRect().left) : null);
+      return {
+        dangerZone: /Danger zone/i.test(text),
+        deletePresent: Boolean(del),
+        sameRow: del && save ? Math.abs(top(del) - top(save)) < 8 : null,
+        deleteLeftOfSave: del && save ? left(del) < left(save) : null,
+      };
+    });
+
+    check("the Danger zone card is gone", bar.dangerZone === false);
+    check(
+      "Delete sits on the same row as Save changes, to its left",
+      bar.deletePresent && bar.sameRow === true && bar.deleteLeftOfSave === true,
+      JSON.stringify(bar)
+    );
+
+    // It must ASK, in the app's shared confirm shell, and cancelling must
+    // leave the record alone.
+    await page.locator('button:has-text("Delete")').first().click();
+    await page.waitForSelector('[role="dialog"]', { timeout: 10000 });
+    await page.waitForTimeout(350);
+    const dialog = await page.evaluate(() => {
+      const d = document.querySelector('[role="dialog"]');
+      return {
+        asks: /cannot be undone/i.test(d.innerText),
+        confirmLabel: [...d.querySelectorAll("button")].map((b) => b.textContent.trim()),
+      };
+    });
+    check(
+      "deleting asks first, in the shared confirm dialog",
+      dialog.asks && dialog.confirmLabel.some((l) => /Delete job work/i.test(l)),
+      JSON.stringify(dialog)
+    );
+
+    await page.click('[role="dialog"] button:has-text("Cancel")');
+    await page
+      .waitForFunction(() => !document.querySelector('[role="dialog"]'), null, { timeout: 8000 })
+      .catch(() => {});
+    await page.waitForTimeout(400);
+    const stillHere = await page.evaluate(() =>
+      Boolean(document.querySelector('input[name="pieces"]'))
+    );
+    check("cancelling the delete leaves the record open and intact", stillHere);
+  }
+}
+
 console.log("\n--- CURSORS ---");
 {
   // Tailwind v4's Preflight resets `button` to `cursor: default`, following

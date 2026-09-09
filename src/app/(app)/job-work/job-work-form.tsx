@@ -43,6 +43,7 @@ import { useDerivedRate } from "./use-derived-rate";
 import { useJobWorkDraft, type JobWorkDraft } from "./use-job-work-draft";
 import { Req } from "@/components/required-mark";
 import { PhotoPicker } from "@/components/photo-picker";
+import { DeleteJobWorkButton } from "./delete-job-work-button";
 
 type JobWorkStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED";
 
@@ -244,7 +245,12 @@ export function JobWorkForm({
             Back to job work
           </Link>
 
-          <div className="ml-auto flex items-center gap-2.5">
+          <div className="ml-auto flex flex-wrap items-center gap-2.5">
+            {/* Delete lives with the other actions, not in a "Danger zone"
+                card below the form. It is leftmost so the primary action
+                stays rightmost, which is the order every other action bar in
+                this app uses. */}
+            {isEdit ? <DeleteJobWorkButton jobWorkId={jobWork.id} /> : null}
             <Button asChild variant="outline" className="h-10 px-4">
               <Link href="/job-work">Cancel</Link>
             </Button>

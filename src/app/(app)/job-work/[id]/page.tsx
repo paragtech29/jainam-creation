@@ -5,7 +5,6 @@ import { listParties, getPartyById } from "@/lib/db/repositories/parties";
 import { listKarigars, listKarigarPartyLinks, getKarigarById } from "@/lib/db/repositories/karigars";
 import { listDescriptionTypes } from "@/lib/db/repositories/description-types";
 import { JobWorkForm } from "../job-work-form";
-import { JobWorkRecordActions } from "./job-work-record-actions";
 
 export default async function JobWorkDetailPage({
   params,
@@ -96,9 +95,6 @@ export default async function JobWorkDetailPage({
         />
       </div>
 
-      <div className="rounded-lg border border-border bg-card p-5 shadow-card sm:p-6">
-        <JobWorkRecordActions jobWorkId={jobWork.id} />
-      </div>
     </div>
   );
 }

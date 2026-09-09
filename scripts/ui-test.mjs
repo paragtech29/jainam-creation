@@ -1338,6 +1338,79 @@ console.log("\n--- DIALOG CANCEL AND DIRTY-GATING ---");
 // unless it sits inside a scroll region. A short screen is where that shows up
 // first, so check one. This caught the job work empty state being cut off at
 // the bottom with no way to scroll down to it.
+console.log("\n--- CURSORS ---");
+{
+  // Tailwind v4's Preflight resets `button` to `cursor: default`, following
+  // the HTML spec where only links are pointer. The effect here was that every
+  // button, dropdown and switch in the app showed a plain arrow — 14 of 20
+  // enabled controls when first surveyed. On a laptop the cursor is half of
+  // what says "this is clickable" BEFORE you click, so it is restored in
+  // globals.css and pinned here: a per-component `cursor-pointer` class is
+  // exactly the kind of thing that gets forgotten on the next component.
+  //
+  // A date input is the one deliberate exception: the browser's own cursor
+  // there is an arrow, and only the little calendar button inside it opens the
+  // picker — that indicator gets the pointer instead.
+  const SEL =
+    'button, [role="button"], [role="combobox"], [role="switch"], [role="tab"], summary, select, input[type="checkbox"], input[type="radio"], input[type="file"]';
+
+  const survey = () =>
+    page.evaluate((sel) => {
+      const bad = [];
+      let checked = 0;
+      for (const el of document.querySelectorAll(sel)) {
+        if (!el.getClientRects().length) continue;
+        const cs = getComputedStyle(el);
+        // An element that cannot be hovered shows its parent's cursor, so it
+        // has no cursor of its own to be wrong about.
+        if (cs.pointerEvents === "none") continue;
+        const off = el.disabled || el.getAttribute("aria-disabled") === "true";
+        checked++;
+        const want = off ? "not-allowed" : "pointer";
+        if (cs.cursor !== want) {
+          bad.push(
+            `${el.tagName}${el.getAttribute("role") ? "[" + el.getAttribute("role") + "]" : ""}` +
+              `${off ? "(off)" : ""}="${(el.textContent || el.getAttribute("aria-label") || "").trim().slice(0, 20)}" ` +
+              `is ${cs.cursor}`
+          );
+        }
+      }
+      return { checked, bad };
+    }, SEL);
+
+  for (const [name, url] of [
+    ["dashboard", "/dashboard"],
+    ["parties", "/parties"],
+    ["karigars", "/karigars"],
+    ["job-work", "/job-work"],
+    ["job-work/new", "/job-work/new"],
+    ["settings", "/settings"],
+  ]) {
+    await page.goto(BASE + url, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(1000);
+    const r = await survey();
+    check(
+      `${name}: every control shows the right cursor`,
+      r.checked > 0 && r.bad.length === 0,
+      r.bad.length ? r.bad.slice(0, 4).join("; ") : `${r.checked} controls`
+    );
+  }
+
+  // And inside a dialog, which is its own DOM tree via a portal.
+  await page.goto(BASE + "/parties", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(900);
+  await openCreateDialog(page, "Add party");
+  await page.waitForTimeout(500);
+  const inDialog = await survey();
+  check(
+    "dialog: every control shows the right cursor",
+    inDialog.checked > 0 && inDialog.bad.length === 0,
+    inDialog.bad.length ? inDialog.bad.slice(0, 4).join("; ") : `${inDialog.checked} controls`
+  );
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(400);
+}
+
 console.log("\n--- NOTHING IS CLIPPED (short screen) ---");
 {
   const shortCtx = await browser.newContext({ viewport: { width: 1366, height: 620 } });

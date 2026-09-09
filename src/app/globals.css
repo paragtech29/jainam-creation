@@ -418,3 +418,55 @@ input[type="search"]::-webkit-search-results-decoration {
     transform: translateX(-12%);
   }
 }
+
+/* ─── Pointer cursors on things you can act on ─────────────────
+   Tailwind v4's Preflight resets `button` to `cursor: default` — it follows
+   the HTML spec, where only links are pointer. The result here was that
+   every button, dropdown, switch and pager control in the app showed a plain
+   arrow: 14 of 20 enabled controls surveyed. On a laptop the cursor is half
+   of what tells you something is clickable before you click it, so this is
+   restored deliberately and in ONE place, rather than a `cursor-pointer`
+   class remembered on each new component.
+
+   Disabled controls get `not-allowed` instead — where they still receive
+   pointer events. Several carry `disabled:pointer-events-none`, and those
+   show whatever their parent shows, which is correct: an element that cannot
+   be hovered should not claim a cursor of its own.
+   ───────────────────────────────────────────────────────────── */
+@layer base {
+  button:not(:disabled),
+  select:not(:disabled),
+  summary,
+  label[for],
+  [role="button"]:not([aria-disabled="true"]),
+  [role="combobox"]:not([aria-disabled="true"]),
+  [role="switch"]:not([aria-disabled="true"]),
+  [role="tab"]:not([aria-disabled="true"]),
+  [role="option"],
+  [role="menuitem"],
+  [role="menuitemcheckbox"],
+  [role="menuitemradio"],
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  input[type="file"]:not(:disabled),
+  input[type="submit"]:not(:disabled),
+  input[type="reset"]:not(:disabled),
+  input[type="range"]:not(:disabled),
+  input[type="color"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  /* A date field is a text box you can also type in, so the field itself
+     keeps the text cursor — but the little calendar button inside it is a
+     control and should say so. */
+  ::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  select:disabled,
+  [aria-disabled="true"],
+  input:disabled {
+    cursor: not-allowed;
+  }
+}

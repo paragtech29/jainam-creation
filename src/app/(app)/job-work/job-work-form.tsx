@@ -457,8 +457,10 @@ export function JobWorkForm({
             error={state?.fieldErrors?.lines}
           />
 
-          <Field orientation="responsive">
-            <FieldContent>
+          {/* One row, because it is one sentence: pieces × rate = total.
+              Same three-column grid as the date/party/karigar row above. */}
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Field>
               <FieldLabel htmlFor="pieces">Pieces <Req /></FieldLabel>
               <Input
                 id="pieces"
@@ -476,9 +478,9 @@ export function JobWorkForm({
                 className="h-[42px] text-right font-mono tabular-nums"
               />
               <FieldError errors={[{ message: state?.fieldErrors?.pieces }]} />
-            </FieldContent>
+            </Field>
 
-            <FieldContent>
+            <Field>
               <FieldLabel htmlFor="rate">Rate <Req /></FieldLabel>
               <div className="relative">
                 <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -516,25 +518,27 @@ export function JobWorkForm({
                 </FieldDescription>
               )}
               <FieldError errors={[{ message: state?.fieldErrors?.rate }]} />
-            </FieldContent>
-          </Field>
+            </Field>
 
-          {/* The money line, shown as the sum it is. Pieces × rate, spelled
-              out, so a wrong figure is obvious before saving rather than
-              after. The server recomputes this — the browser never decides it. */}
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-border bg-accent/50 px-4 py-3">
-            <div className="flex items-baseline gap-1.5 font-mono text-sm tabular-nums text-secondary-foreground">
-              <span>{draft.pieces || 0}</span>
-              <span className="text-muted-foreground">pieces</span>
-              <span className="text-muted-foreground">×</span>
-              <span>₹{rateHook.rate || 0}</span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-xs uppercase tracking-[0.09em] text-muted-foreground">Total</span>
-              <span className="font-mono text-2xl font-bold tabular-nums tracking-tight">
+            {/* Read-only, and deliberately WITHOUT a name: the server
+                recomputes the total from pieces and rate, and never reads a
+                posted one. It keeps the input height so the row lines up, and
+                spells the sum out underneath so a wrong figure is obvious
+                before saving rather than after. aria-live because it changes
+                without being touched. */}
+            <Field>
+              <FieldLabel htmlFor="total-preview">Total</FieldLabel>
+              <output
+                id="total-preview"
+                aria-live="polite"
+                className="flex h-[42px] items-center justify-end rounded-[10px] border border-border bg-accent/50 px-3 font-mono text-lg font-bold tabular-nums tracking-tight"
+              >
                 ₹{totalPreview.toLocaleString("en-IN")}
-              </span>
-            </div>
+              </output>
+              <FieldDescription className="font-mono tabular-nums">
+                {draft.pieces || 0} × ₹{rateHook.rate || 0}
+              </FieldDescription>
+            </Field>
           </div>
         </FieldSet>
 

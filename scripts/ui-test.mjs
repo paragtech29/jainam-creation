@@ -213,7 +213,10 @@ if (MODE === "shots") {
 }
 
 // ─────────────────────────── assertions ───────────────────────────
-const ctx = await browser.newContext({ viewport: VIEWPORTS.laptop });
+// acceptDownloads explicitly: the export check asserts that clicking Excel
+// produces a FILE, and a check that fails because downloads were disabled
+// would be blaming the app for the harness.
+const ctx = await browser.newContext({ viewport: VIEWPORTS.laptop, acceptDownloads: true });
 const page = await ctx.newPage();
 const jsErrors = [];
 page.on("pageerror", (e) => jsErrors.push(String(e.message).slice(0, 140)));
@@ -601,6 +604,57 @@ console.log("\n--- EXPORT ---");
     // the full set.
     const expectedRows = screen.of || screen.rows;
     check("an Export button is on the job work list", await page.isVisible('button:has-text("Export")'));
+
+    // The menu must be REACHABLE, which is not the same as present. This
+    // button sits in the footer of a shell that is overflow-hidden, and a
+    // hand-rolled panel opened downward off the bottom of the screen: at
+    // 1440x900 it ran from y=871 to y=1019 with the Excel row at y=906,
+    // entirely below the fold. Export looked broken because the only item
+    // that does the work could not be clicked. Radix's portalled, collision-
+    // aware content flips it above the button instead.
+    await page.click('button:has-text("Export")');
+    await page.waitForTimeout(450);
+    const menu = await page.evaluate(() => {
+      const inView = (el) => {
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return (
+          r.top >= 0 &&
+          r.bottom <= window.innerHeight &&
+          r.left >= 0 &&
+          r.right <= window.innerWidth
+        );
+      };
+      const link = (re) => [...document.querySelectorAll("a")].find((a) => re.test(a.textContent || ""));
+      const content = document.querySelector("[data-slot=dropdown-menu-content]");
+      return {
+        side: content?.getAttribute("data-side") ?? null,
+        excelInView: inView(link(/Excel/)),
+        pdfInView: inView(link(/PDF/)),
+      };
+    });
+    check(
+      "both export options are fully on screen when the menu opens",
+      menu.excelInView === true && menu.pdfInView === true,
+      JSON.stringify(menu)
+    );
+
+    // And the Excel item really produces a file on a plain click — not a
+    // forced one, which would prove nothing about whether it is clickable.
+    let downloaded = null;
+    try {
+      const [dl] = await Promise.all([
+        page.waitForEvent("download", { timeout: 15000 }),
+        page.locator('a:has-text("Excel")').click(),
+      ]);
+      downloaded = dl.suggestedFilename();
+    } catch {}
+    check(
+      "clicking Excel downloads a file",
+      Boolean(downloaded) && /\.xlsx$/.test(downloaded ?? ""),
+      String(downloaded)
+    );
+    await page.waitForTimeout(300);
 
     const res = await page.request.get(BASE + "/api/export/job-works");
     check("the Excel route returns a file", res.status() === 200, "status " + res.status());

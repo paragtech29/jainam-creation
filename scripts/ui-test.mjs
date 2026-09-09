@@ -807,13 +807,72 @@ console.log("\n--- IMAGE UPLOAD ---");
   await page.keyboard.press("Escape");
   await page.waitForTimeout(400);
 
-  // The job work form carries two, per the owner's fixed count.
+  // The job work form: still exactly two photos, but behind ONE "+ Add photo"
+  // control rather than two dashed boxes taking a third of the form before a
+  // single picture exists. The form contract is unchanged — two named file
+  // inputs — which is what lets the server code stay untouched.
   await page.goto(BASE + "/job-work/new", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1200);
-  const boxes = await page.evaluate(
-    () => document.querySelectorAll('input[type="file"][name^="photo"]').length
+
+  const photoState = () =>
+    page.evaluate(() => {
+      const main = document.querySelector("main");
+      const text = main.innerText;
+      return {
+        fields: document.querySelectorAll('input[type="file"][name^="photo"]').length,
+        addButtons: [...main.querySelectorAll("button")].filter((x) =>
+          /add photo/i.test(x.textContent || "")
+        ).length,
+        thumbs: main.querySelectorAll('img[alt^="Photo"]').length,
+        hint: (text.match(/Optional · up to 2 · JPG, PNG or WEBP|2 of 2 added/) || [])[0] ?? null,
+        // Each hidden input must actually be holding its compressed file, or
+        // nothing would reach the server.
+        held: [...document.querySelectorAll('input[type="file"][name^="photo"]')].map(
+          (i) => i.files.length
+        ),
+        photosBeforeStatus:
+          text.indexOf("Photos") !== -1 && text.indexOf("Job Work Status") !== -1
+            ? text.indexOf("Photos") < text.indexOf("Job Work Status")
+            : null,
+      };
+    });
+
+  const empty = await photoState();
+  check("two photo fields, behind one Add photo control", empty.fields === 2 && empty.addButtons === 1, JSON.stringify(empty));
+  check("the photo hint states the limit", empty.hint === "Optional · up to 2 · JPG, PNG or WEBP", String(empty.hint));
+  check("photos sit before the status", empty.photosBeforeStatus === true);
+
+  // The section headings the owner asked to remove must stay gone.
+  const headings = await page.evaluate(() => {
+    const t = document.querySelector("main").innerText;
+    return ["Design numbers", "Work done", "Notes & status"].filter((h) => t.includes(h));
+  });
+  check("no section headings on the job work form", headings.length === 0, JSON.stringify(headings));
+
+  // Add two, then remove one: the control disappears at the limit and returns.
+  const photoFile = join(tmpdir(), "jc-ui-photo.png");
+  writeFileSync(photoFile, tallTestPng(90, 70));
+  await page.setInputFiles('main input[type="file"]:not([name])', photoFile);
+  await page.waitForSelector('img[alt="Photo 1"]', { timeout: 10000 });
+  await page.setInputFiles('main input[type="file"]:not([name])', photoFile);
+  await page.waitForSelector('img[alt="Photo 2"]', { timeout: 10000 });
+  await page.waitForTimeout(400);
+  const full = await photoState();
+  check(
+    "at two photos the Add control is gone and both files are held",
+    full.thumbs === 2 && full.addButtons === 0 && full.held.every((n) => n === 1),
+    JSON.stringify(full)
   );
-  check("the job work form has exactly two photo fields", boxes === 2, "found " + boxes);
+  check("the hint says the limit is reached", full.hint === "2 of 2 added", String(full.hint));
+
+  await page.click('button[aria-label="Remove photo 1"]');
+  await page.waitForTimeout(400);
+  const afterRemove = await photoState();
+  check(
+    "removing a photo frees its slot and brings the control back",
+    afterRemove.thumbs === 1 && afterRemove.addButtons === 1 && afterRemove.held[0] === 0 && afterRemove.held[1] === 1,
+    JSON.stringify(afterRemove)
+  );
 
   // The list's first column leads with the logo. Every row must carry one —
   // an image if there is a logo, initials if not. A column that is populated

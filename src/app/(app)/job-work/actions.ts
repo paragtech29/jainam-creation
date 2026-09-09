@@ -128,6 +128,14 @@ export async function createJobWorkAction(
       computerDesignNo: computerDesignNo || null,
       comment: comment || null,
       status,
+      // The photos. These were stored by saveUploadedImage above and then
+      // NEVER attached here, so every photo added to a NEW job work was
+      // silently discarded while its bytes stayed in the images table as an
+      // orphan. The update action had it right (photo1ImageId/photo2ImageId);
+      // create simply omitted them. Found by driving a real save rather than
+      // by reading the form, which is why it survived since the photo work.
+      photo1ImageId: photo1.imageId,
+      photo2ImageId: photo2.imageId,
       // A brand-new job work is never already billed — the locked rule
       // requires COMPLETED first, and creation always starts un-billed.
       isBilled: false,

@@ -34,7 +34,6 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
-  FieldLegend,
   FieldSet,
 } from "@/components/ui/field";
 import { createJobWorkAction, updateJobWorkAction, type JobWorkFormState } from "./actions";
@@ -43,7 +42,7 @@ import { DescriptionRows } from "./description-rows";
 import { useDerivedRate } from "./use-derived-rate";
 import { useJobWorkDraft, type JobWorkDraft } from "./use-job-work-draft";
 import { Req } from "@/components/required-mark";
-import { ImageUpload } from "@/components/image-upload";
+import { PhotoPicker } from "@/components/photo-picker";
 
 type JobWorkStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED";
 
@@ -265,7 +264,6 @@ export function JobWorkForm({
 
       <FieldGroup>
         <FieldSet>
-          <FieldLegend variant="label">Job work</FieldLegend>
           {/* Three-up on a laptop, stacked on a phone. Date, party and karigar
               are chosen together in one glance, so they belong on one line
               where the width exists. */}
@@ -388,7 +386,6 @@ export function JobWorkForm({
         </FieldSet>
 
         <FieldSet>
-          <FieldLegend variant="label">Design numbers</FieldLegend>
           <div className="grid gap-4 lg:grid-cols-3">
 
           <Field>
@@ -446,8 +443,6 @@ export function JobWorkForm({
         </FieldSet>
 
         <FieldSet>
-          <FieldLegend variant="label">Work done</FieldLegend>
-
           <DescriptionRows
             types={descriptionTypes}
             initialRows={
@@ -544,8 +539,6 @@ export function JobWorkForm({
         </FieldSet>
 
         <FieldSet>
-          <FieldLegend variant="label">Notes & status</FieldLegend>
-
           <Field>
             <FieldLabel htmlFor="comment">Comments</FieldLabel>
             <Textarea
@@ -558,6 +551,16 @@ export function JobWorkForm({
             />
             <FieldError errors={[{ message: state?.fieldErrors?.comment }]} />
           </Field>
+
+          {/* Before the status, where the owner wants it: a photo belongs with
+              what the work looked like, not after the decision about billing.
+              Still exactly two, still upload-only — one "+ Add photo" control
+              rather than two dashed boxes taking a third of the form before a
+              single picture exists. */}
+          <PhotoPicker
+            names={["photo1", "photo2"]}
+            currentImageIds={[jobWork?.photo1ImageId ?? null, jobWork?.photo2ImageId ?? null]}
+          />
 
           <div className="grid gap-4 lg:grid-cols-2">
           <Field>
@@ -623,22 +626,6 @@ export function JobWorkForm({
           </Field>
           </div>
 
-          {/* Two, as the owner fixed it. Upload only — no camera capture,
-              he was explicit that tapping the box should open the picker. */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <ImageUpload
-              name="photo1"
-              label="Photo 1"
-              hint="Optional. A picture of the maal or the finished work."
-              currentImageId={jobWork?.photo1ImageId}
-            />
-            <ImageUpload
-              name="photo2"
-              label="Photo 2"
-              hint="Optional."
-              currentImageId={jobWork?.photo2ImageId}
-            />
-          </div>
         </FieldSet>
       </FieldGroup>
 

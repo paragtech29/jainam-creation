@@ -22,6 +22,8 @@
 //   * a karigar shared between two parties, which is the real business case
 //   * one archived party and one archived karigar, so the archive filters
 //     have something to show
+//   * more than ten parties and more than ten karigars, because the lists
+//     page at ten and a pager that never appears cannot be tried
 //   * a party and a karigar with NO job works, so their Delete button appears
 //     (the app hides Delete once a record has job works) — otherwise the
 //     delete path cannot be tried at all
@@ -61,6 +63,13 @@ const PARTIES = [
   { name: "Krishna Textiles", ownerName1: "Bharat bhai", contact1: "99040 77215", gender: "male", address: "Katargam, Surat" },
   { name: "Sai Silk Mills", ownerName1: "Pravin bhai", ownerName2: "Jagdish bhai", contact1: "94270 55901", gender: "male", address: "Udhna, Surat" },
   { name: "Navkar Sarees", ownerName1: "Rekha ben", contact1: "90990 21764", gender: "female", address: "Varachha, Surat" },
+  { name: "Laxmi Silk House", ownerName1: "Ashok bhai", contact1: "98795 10233", gender: "male", address: "Sahara Darwaja, Surat" },
+  { name: "Radhe Creation", ownerName1: "Jayesh bhai", ownerName2: "Ramesh bhai", contact1: "97129 45580", gender: "male", address: "Kapodra, Surat" },
+  { name: "Mahavir Fashion", ownerName1: "Sunita ben", contact1: "94288 30176", gender: "female", address: "Bhagal, Surat" },
+  { name: "Ganesh Textiles", ownerName1: "Vipul bhai", contact1: "99251 62037", gender: "male", address: "Pandesara, Surat" },
+  { name: "Umiya Creation", ownerName1: "Kiran bhai", contact1: "90333 71824", gender: "male", address: "Amroli, Surat" },
+  { name: "Balaji Sarees", ownerName1: "Mansi ben", contact1: "93135 20649", gender: "female", address: "Parvat Patiya, Surat" },
+  { name: "Satguru Fabrics", ownerName1: "Harish bhai", contact1: "97267 84413", gender: "male", address: "Dindoli, Surat" },
   // Archived on purpose, so "Show archived" has something to show.
   { name: "Anand Fabrics", ownerName1: "Dinesh bhai", contact1: "93770 60432", gender: "male", address: "Bhatar, Surat", archived: true },
   // Deliberately given NO job works, so its Delete button is offered.
@@ -72,6 +81,14 @@ const KARIGARS = [
   { name: "Sohail", contact1: "97140 88213", address: "Navsari Bazaar" },
   { name: "Nadeem bhai", contact1: "99790 44510", address: "Rander" },
   { name: "Rafiq bhai", contact1: "90163 27788", address: "Godadara" },
+  { name: "Javed bhai", contact1: "98241 60915", address: "Sonifaliya" },
+  { name: "Arif", contact1: "97370 22684", address: "Umarwada" },
+  { name: "Shakeel bhai", contact1: "99136 40072", address: "Magdalla" },
+  { name: "Yunus", contact1: "94081 55319", address: "Bhestan" },
+  { name: "Iqbal bhai", contact1: "90992 17408", address: "Sachin" },
+  { name: "Mustak", contact1: "93281 60947", address: "Ved Road" },
+  { name: "Anwar bhai", contact1: "97255 38810", address: "Katargam" },
+  { name: "Zahid", contact1: "98984 71260", address: "Anjana Farm" },
   // Archived on purpose.
   { name: "Salim", contact1: "94086 51230", address: "Pandesara", archived: true },
   // No job works, so it can be deleted.

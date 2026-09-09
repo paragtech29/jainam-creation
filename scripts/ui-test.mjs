@@ -11,6 +11,7 @@
 //
 // Env: BASE_URL, UI_USER, UI_PASS, SHOT_DIR, ONLY_VP, ONLY
 import { chromium } from "playwright";
+import { spawnSync } from "node:child_process";
 import ExcelJS from "exceljs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -2282,4 +2283,21 @@ console.log("\njs page errors across the run:", jsErrors.length ? jsErrors.join(
 console.log(`\n${pass} passed, ${failures.length} failed, ${skipped} skipped`);
 if (failures.length) console.log("FAILURES:\n  " + failures.join("\n  "));
 await browser.close();
+
+// Remove the "ZZ Test …" parties, karigars and work types this run created.
+//
+// It runs whether the suite passed or FAILED — a failed run leaves the most
+// behind, and leaving the tidy-up for a human to remember is exactly how test
+// rows ended up sitting in the owner's register while he was using the app.
+// spawnSync rather than importing the repositories: this file is plain node
+// with no database access, and tidy:test already knows what to match.
+{
+  const tidy = spawnSync("npm", ["run", "tidy:test", "--", "--yes"], {
+    shell: true,
+    encoding: "utf8",
+  });
+  const removed = (tidy.stdout || "").match(/Removed (\d+) row/);
+  console.log(`\ncleanup: ${removed ? removed[1] : "0"} test row(s) removed`);
+}
+
 process.exit(failures.length ? 1 : 0);

@@ -68,11 +68,21 @@ export default async function DashboardPage({
     getJobWorkDateRange(userId),
     // Five, at the owner's request. "Recent" is a glance, not a list — the
     // full register is one tap away under Job Work.
-    listJobWorksPage(userId, { page: 1, pageSize: 5 }),
+    //
+    // Scoped to the SELECTED MONTH, like every other figure on this screen.
+    // It was not, and that only became visible once the month could be jumped
+    // to directly: viewing January 2025 showed September 2026 rows beside
+    // tiles reading January 2025. One screen, one time window.
+    listJobWorksPage(userId, { page: 1, pageSize: 5, from, to }),
   ]);
 
   // Stop the picker wandering into empty years in either direction. Forward
   // is capped at the current month even when a job work is dated ahead.
+  const firstYear = Number((range.first ?? `${thisMonth()}-01`).slice(0, 4));
+  const thisYearNo = Number(thisMonth().slice(0, 4));
+  const years: string[] = [];
+  for (let y = thisYearNo; y >= Math.min(firstYear, thisYearNo); y--) years.push(String(y));
+
   const earliest = (range.first ?? thisMonth() + "-01").slice(0, 7);
   const latest = [range.last?.slice(0, 7), thisMonth()].filter(Boolean).sort().pop()!;
   const canGoBack = month > earliest;
@@ -126,16 +136,17 @@ export default async function DashboardPage({
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto flex flex-col gap-4">
-      {/* The month is named ONCE, here, as the heading it is. The picker
-          beside it carries arrows and an escape back to today, but no second
-          copy of the label. */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-[21px] font-bold leading-none tracking-[-0.025em]">{label}</h2>
+      {/* The month is named ONCE, by the picker's own selects. */}
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        {/* No heading: the month and year selects name the month, and naming
+            it twice on one row is what the owner objected to before. */}
         <MonthPicker
           month={month}
           isCurrent={month === thisMonth()}
           canGoBack={canGoBack}
           canGoForward={canGoForward}
+          years={years}
+          currentMonth={thisMonth()}
         />
       </div>
 

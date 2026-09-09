@@ -1341,6 +1341,70 @@ console.log("\n--- DASHBOARD ---");
   );
   check("the three part-tiles carry a status dot", hero.dots === 3, `${hero.dots} dots`);
 
+  // Any month of any year is TWO clicks. With arrows alone, January 2026 was
+  // nine clicks from September and January 2025 was twenty-one — far enough
+  // that the owner concluded last year's job works had never been seeded.
+  // They had; they were simply out of reach.
+  const picker = () =>
+    page.evaluate(() => {
+      const combos = [...document.querySelectorAll("main [role=combobox]")];
+      const panel = [...document.querySelectorAll("main section")].find((x) =>
+        /Recent job work/.test(x.textContent || "")
+      );
+      const t = document.querySelector("main").innerText.replace(/\s+/g, " ");
+      return {
+        month: combos[0]?.textContent.trim() ?? null,
+        year: combos[1]?.textContent.trim() ?? null,
+        search: location.search,
+        noteCount: Number((t.match(/(\d+) job works? this month/) || [])[1] ?? -1),
+        recentRows: panel ? panel.querySelectorAll("a[href^='/job-work/']").length : -1,
+      };
+    });
+  const choose = async (which, label) => {
+    await page.locator("main [role=combobox]").nth(which).click();
+    await page.waitForTimeout(350);
+    await page.locator('[role="option"]', { hasText: new RegExp("^" + label + "$") }).first().click();
+    await page.waitForTimeout(1400);
+  };
+
+  const startYear = (await picker()).year;
+  const olderYear = String(Number(startYear) - 1);
+  await choose(1, olderYear);
+  await choose(0, "January");
+  const jumped = await picker();
+  check(
+    "any month of any year is two clicks away",
+    jumped.month === "January" && jumped.year === olderYear && jumped.search.includes(`month=${olderYear}-01`),
+    JSON.stringify(jumped)
+  );
+
+  // Recent job work must follow the month, like every other figure here. It
+  // did not until the month became easy to change, and then a January 2025
+  // screen was showing September 2026 rows beside January 2025 tiles.
+  check(
+    "the recent list belongs to the month being viewed",
+    jumped.noteCount >= 0 && jumped.recentRows === Math.min(jumped.noteCount, 5),
+    JSON.stringify({ monthCount: jumped.noteCount, recentRows: jumped.recentRows })
+  );
+
+  // The future is not offered: an option leading to a guaranteed empty screen
+  // is worse than its absence.
+  await choose(1, startYear);
+  await page.locator("main [role=combobox]").nth(0).click();
+  await page.waitForTimeout(400);
+  const monthsThisYear = await page.locator('[role="option"]').allTextContents();
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+  const monthOfYear = new Date().getMonth() + 1;
+  check(
+    "the current year offers no future months",
+    monthsThisYear.length === monthOfYear,
+    `${monthsThisYear.length} offered, month ${monthOfYear} of the year`
+  );
+
+  await page.goto(BASE + "/dashboard", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(900);
+
   // The year, and whether the month is up or down. Both were added because a
   // bare figure cannot answer "is this a good month?" — but the comparison has
   // to be against the month BEFORE THE SELECTED ONE, not against a fixed

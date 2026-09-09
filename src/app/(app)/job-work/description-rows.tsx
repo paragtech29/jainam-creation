@@ -79,31 +79,34 @@ export function DescriptionRows({
     );
   }
 
+  // Every mutation computes the next rows FIRST, then sets local state and
+  // tells the parent — both outside the state updater.
+  //
+  // These used to call emitRows() from INSIDE setRows((cur) => …). A state
+  // updater must be pure: React may run it during a render pass, and
+  // emitRows reaches into the parent's setState, which React reports as
+  // "Cannot update a component (JobWorkForm) while rendering a different
+  // component (DescriptionRows)" and then discards. The visible symptom was
+  // that picking a freshly created description type did nothing at all — the
+  // row stayed on "Choose work…" — because the update that carried it was
+  // thrown away mid-render.
+  function commit(next: Row[]) {
+    setRows(next);
+    emitRows(next);
+  }
+
   function updateRow(key: string, patch: Partial<Row>) {
-    setRows((cur) => {
-      const next = cur.map((r) => (r.key === key ? { ...r, ...patch } : r));
-      emitRows(next);
-      return next;
-    });
+    commit(rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   }
 
   function addRow() {
-    setRows((cur) => [...cur, newRow()]);
+    commit([...rows, newRow()]);
   }
 
   function removeRow(key: string) {
-    setRows((cur) => {
-      const next = cur.filter((r) => r.key !== key);
-      emitRows(next);
-      // Never leave the owner with nothing to type into.
-      const result = next.length > 0 ? next : [newRow()];
-      if (next.length === 0) {
-        // The fresh blank row carries no price, so pricing doesn't change,
-        // but emit anyway for consistency with the filtered array shown.
-        emitRows(result);
-      }
-      return result;
-    });
+    const next = rows.filter((r) => r.key !== key);
+    // Never leave the owner with nothing to type into.
+    commit(next.length > 0 ? next : [newRow()]);
     if (addingTypeForRow === key) setAddingTypeForRow(null);
   }
 
@@ -149,6 +152,16 @@ export function DescriptionRows({
                     setAddingTypeForRow(row.key);
                     return;
                   }
+                  // An EMPTY value is never a real choice - there is no blank
+                  // option in this list. Radix fires one anyway when the
+                  // option set changes underneath it, which is exactly what
+                  // happens the moment a new type is added inline: the row was
+                  // set to the new type and then immediately cleared again by
+                  // that spurious change, so creating a type appeared to do
+                  // nothing at all. Proven by instrumenting the two commits:
+                  //   commit [[row, "wx9g...", ""]]   <- correct
+                  //   commit [[row, "", ""]]          <- the spurious clear
+                  if (!v) return;
                   updateRow(row.key, { descriptionTypeId: v });
                 }}
               >

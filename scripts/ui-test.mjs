@@ -597,6 +597,9 @@ console.log("\n--- EXPORT ---");
   if (screen.rows === 0) {
     skip("export", "no job works to export");
   } else {
+    // With a pager, "of N" is the full count; without one, a single page IS
+    // the full set.
+    const expectedRows = screen.of || screen.rows;
     check("an Export button is on the job work list", await page.isVisible('button:has-text("Export")'));
 
     const res = await page.request.get(BASE + "/api/export/job-works");
@@ -633,8 +636,8 @@ console.log("\n--- EXPORT ---");
       // The whole point: every matching row, not one page of them.
       check(
         "EVERY job work is exported, not just the current page",
-        body.length === screen.of,
-        `xlsx=${body.length} db=${screen.of}`
+        body.length === expectedRows,
+        `xlsx=${body.length} expected=${expectedRows}`
       );
 
       const summed = body.reduce((a, r) => a + Number(r.getCell(totalCol).value || 0), 0);
@@ -1459,6 +1462,80 @@ console.log("\n--- DIALOG CANCEL AND DIRTY-GATING ---");
 // unless it sits inside a scroll region. A short screen is where that shows up
 // first, so check one. This caught the job work empty state being cut off at
 // the bottom with no way to scroll down to it.
+console.log("\n--- ADD A WORK TYPE INLINE ---");
+{
+  // Creating a type from inside the row is the ONLY way to fill the first
+  // description row — there is no management screen for types. It was
+  // silently broken: the row took the new type and a spurious empty
+  // onValueChange from the Select immediately cleared it again, so the owner
+  // saw nothing happen at all.
+  //
+  // The type this creates is named "ZZ Test …", which `npm run tidy:test`
+  // now deletes — it had to be taught to, because nothing in the UI can
+  // remove a work type.
+  const TYPE = TAG + " Work";
+
+  await page.goto(BASE + "/job-work/new", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1300);
+
+  const rowValue = () =>
+    page.evaluate(() => {
+      const sel = document.querySelector('select[name="descriptionTypeId"]');
+      const trigger = [...document.querySelectorAll('[role="combobox"]')].find((c) =>
+        c.closest('[class*="grid-cols-[1fr_150px_44px]"]')
+      );
+      return { value: sel ? sel.value : null, shows: trigger?.textContent?.trim() ?? null };
+    });
+
+  const beforePick = await rowValue();
+
+  await page.locator('[role="combobox"]').filter({ hasText: /choose work/i }).first().click();
+  await page.waitForTimeout(400);
+  await page.locator('[role="option"]').filter({ hasText: /add new/i }).first().click();
+  await page.waitForSelector('[role="dialog"]', { timeout: 10000 });
+  await page.waitForTimeout(300);
+  await page.fill('[role="dialog"] input[name="name"]', TYPE);
+  await page.click('[role="dialog"] button:has-text("Add type")');
+  // The dialog closing is the signal the action came back.
+  await page
+    .waitForFunction(() => !document.querySelector('[role="dialog"]'), null, { timeout: 15000 })
+    .catch(() => {});
+  await page.waitForTimeout(600);
+
+  const afterCreate = await rowValue();
+  check(
+    "creating a work type inline selects it into the row",
+    beforePick.value === "" && afterCreate.value !== "" && afterCreate.shows === TYPE,
+    JSON.stringify({ before: beforePick, after: afterCreate })
+  );
+
+  // And it is offered on the next row too, without a reload.
+  const offered = await page.evaluate((name) => {
+    const sel = document.querySelector('select[name="descriptionTypeId"]');
+    return sel ? [...sel.options].some((o) => o.textContent === name) : false;
+  }, TYPE);
+  check("the new type joins the list immediately", offered);
+
+  // A duplicate must be refused with a readable message, not a Postgres error.
+  await page.locator('[role="combobox"]').filter({ hasText: TYPE }).first().click();
+  await page.waitForTimeout(350);
+  await page.locator('[role="option"]').filter({ hasText: /add new/i }).first().click();
+  await page.waitForSelector('[role="dialog"]', { timeout: 10000 });
+  await page.fill('[role="dialog"] input[name="name"]', TYPE);
+  await page.click('[role="dialog"] button:has-text("Add type")');
+  await page.waitForTimeout(1500);
+  const dupMessage = await page.evaluate(
+    () => document.querySelector('[role="dialog"]')?.innerText ?? ""
+  );
+  check(
+    "a duplicate type is refused in plain words",
+    /already exists/i.test(dupMessage) && !/23505|duplicate key/i.test(dupMessage),
+    dupMessage.replace(/\s+/g, " ").slice(0, 90)
+  );
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(400);
+}
+
 console.log("\n--- JOB WORK FORM ACTIONS ---");
 {
   // The actions used to sit in a bar with `sticky bottom-[-1.25rem]` — a

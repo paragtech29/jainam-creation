@@ -14,7 +14,7 @@ import { useActionState, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useFormStatus } from "react-dom";
-import { Lock } from "lucide-react";
+import { ArrowLeft, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -219,6 +219,50 @@ export function JobWorkForm({
 
   return (
     <form action={formAction} noValidate className="flex flex-col gap-6">
+      {/* Actions at the TOP, not the bottom.
+
+          The bottom bar was `sticky bottom-[-1.25rem]` — a NEGATIVE offset,
+          so it sat 20px below the scroller's edge and both buttons were
+          permanently sliced in half until you happened to reach the very end
+          of the form. That is what the owner saw, and it was not a fold: it
+          was clipped at every scroll position but the last.
+
+          Rather than nudge the offset to zero, the actions moved to where he
+          asked for them — opposite the back link, in a bar that is sticky to
+          the TOP of the scroller. On a form this long the primary action
+          should not have to be hunted for; here it is on screen from the
+          first field to the last, and it can never be half-drawn.
+          The submit error lives in this bar too, for the same reason: a
+          failure message at the far end of a 1200px form is a message nobody
+          reads. */}
+      <div className="sticky top-0 z-20 -mx-5 -mt-5 flex flex-col gap-2 rounded-t-lg border-b border-border bg-card px-5 py-3 sm:-mx-6 sm:-mt-6 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link
+            href="/job-work"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ArrowLeft size={15} aria-hidden="true" />
+            Back to job work
+          </Link>
+
+          <div className="ml-auto flex items-center gap-2.5">
+            <Button asChild variant="outline" className="h-10 px-4">
+              <Link href="/job-work">Cancel</Link>
+            </Button>
+            <SubmitButton
+              label={isEdit ? "Save changes" : "Save job work"}
+              pendingLabel="Saving…"
+            />
+          </div>
+        </div>
+
+        {state?.error ? (
+          <p role="alert" className="text-sm text-destructive">
+            {state.error}
+          </p>
+        ) : null}
+      </div>
+
       <FieldGroup>
         <FieldSet>
           <FieldLegend variant="label">Job work</FieldLegend>
@@ -598,21 +642,6 @@ export function JobWorkForm({
         </FieldSet>
       </FieldGroup>
 
-      {state?.error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {state.error}
-        </p>
-      ) : null}
-
-      <div className="sticky bottom-[-1.25rem] z-10 -mx-5 -mb-5 flex items-center justify-end gap-2.5 border-t border-border bg-muted px-5 py-3.5 sm:bottom-[-1.5rem] sm:-mx-6 sm:-mb-6 sm:px-6">
-        <Button asChild variant="outline" className="h-10 px-4">
-          <Link href="/job-work">Cancel</Link>
-        </Button>
-        <SubmitButton
-          label={isEdit ? "Save changes" : "Save job work"}
-          pendingLabel="Saving…"
-        />
-      </div>
     </form>
   );
 }

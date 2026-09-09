@@ -1,5 +1,3 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { getCurrentUserId } from "@/lib/session";
 import { getJobWorkWithDescriptions } from "@/lib/db/repositories/jobWorks";
@@ -68,16 +66,6 @@ export default async function JobWorkDetailPage({
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto space-y-5">
-      <div>
-        <Link
-          href="/job-work"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft size={15} aria-hidden="true" />
-          Back to job work
-        </Link>
-        <h1 className="mt-3 font-heading text-2xl font-semibold tracking-tight">Edit job work</h1>
-      </div>
 
       <div className="rounded-lg border border-border bg-card p-5 shadow-card sm:p-6">
         <JobWorkForm

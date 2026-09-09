@@ -1400,6 +1400,77 @@ console.log("\n--- DIALOG CANCEL AND DIRTY-GATING ---");
 // unless it sits inside a scroll region. A short screen is where that shows up
 // first, so check one. This caught the job work empty state being cut off at
 // the bottom with no way to scroll down to it.
+console.log("\n--- JOB WORK FORM ACTIONS ---");
+{
+  // The actions used to sit in a bar with `sticky bottom-[-1.25rem]` — a
+  // NEGATIVE offset, so it hung 20px past the scroller's edge and both buttons
+  // were sliced in half at every scroll position except the very last. The
+  // owner reported them as "cut". They now sit in a bar sticky to the TOP,
+  // opposite the back link.
+  //
+  // The assertion is the one that matters: at the top, the middle AND the
+  // bottom of the scroll, both controls are fully drawn. Checking only the top
+  // would have passed on the old layout too.
+  const box = () =>
+    page.evaluate(() => {
+      const sc = [...document.querySelectorAll("main *")].find((el) => {
+        const cs = getComputedStyle(el);
+        return /(auto|scroll)/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1;
+      });
+      const measure = (el) => {
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        const visible = Math.min(r.bottom, window.innerHeight) - Math.max(r.top, 0);
+        return { h: Math.round(r.height), visible: Math.round(visible) };
+      };
+      const save = [...document.querySelectorAll("button")].find((x) =>
+        /save (job work|changes)/i.test(x.textContent || "")
+      );
+      const cancel = [...document.querySelectorAll("a")].find((x) => x.textContent.trim() === "Cancel");
+      return {
+        scrollTop: sc ? Math.round(sc.scrollTop) : null,
+        max: sc ? Math.round(sc.scrollHeight - sc.clientHeight) : null,
+        save: measure(save),
+        cancel: measure(cancel),
+        backLinks: [...document.querySelectorAll("main a")].filter((x) =>
+          /back to job work/i.test(x.textContent || "")
+        ).length,
+      };
+    });
+  const scrollTo = (frac) =>
+    page.evaluate((f) => {
+      const sc = [...document.querySelectorAll("main *")].find((el) => {
+        const cs = getComputedStyle(el);
+        return /(auto|scroll)/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1;
+      });
+      if (sc) sc.scrollTop = Math.round((sc.scrollHeight - sc.clientHeight) * f);
+    }, frac);
+
+  await page.goto(BASE + "/job-work/new", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1400);
+
+  const seen = [];
+  for (const frac of [0, 0.5, 1]) {
+    await scrollTo(frac);
+    await page.waitForTimeout(300);
+    seen.push({ frac, ...(await box()) });
+  }
+  const whole = (m) => m && m.h > 0 && m.visible === m.h;
+  check(
+    "Save and Cancel are never clipped, at any scroll position",
+    seen.every((v) => whole(v.save) && whole(v.cancel)),
+    JSON.stringify(seen.map((v) => ({ at: v.frac, save: v.save, cancel: v.cancel })))
+  );
+  check(
+    "the form actually scrolls, so the check above means something",
+    seen[0].max > 100,
+    `scrollable=${seen[0].max}px`
+  );
+  // One back link, not two: the toolbar carries it now and the page-level one
+  // was removed with it.
+  check("exactly one 'Back to job work' link", seen[0].backLinks === 1, `${seen[0].backLinks} links`);
+}
+
 console.log("\n--- CURSORS ---");
 {
   // Tailwind v4's Preflight resets `button` to `cursor: default`, following

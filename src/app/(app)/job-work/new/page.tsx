@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { ArrowLeft, Users, Scissors } from "lucide-react";
+import { Users, Scissors } from "lucide-react";
 import { getCurrentUserId } from "@/lib/session";
 import { listParties } from "@/lib/db/repositories/parties";
 import { listKarigars, listKarigarPartyLinks } from "@/lib/db/repositories/karigars";
@@ -24,15 +23,6 @@ export default async function NewJobWorkPage() {
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto space-y-5">
-      <div>
-        <Link
-          href="/job-work"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft size={15} aria-hidden="true" />
-          Back to job work
-        </Link>
-      </div>
 
       {parties.length === 0 ? (
         <EmptyState

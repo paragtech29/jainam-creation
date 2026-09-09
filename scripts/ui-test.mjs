@@ -1759,6 +1759,41 @@ console.log("\n--- JOB WORK FORM ACTIONS ---");
   await page.goto(BASE + "/job-work/new", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1400);
 
+  // The three design-number fields must occupy the three columns they appear
+  // to. They did not: the grid was lg:grid-cols-3, but Party Design No and
+  // Computer Design No were packed into ONE cell by a nested
+  // `Field orientation="responsive"`, so Chalan filled column one, those two
+  // shared column two at half width, and column three sat empty. Comparing
+  // them against the row ABOVE is what makes this an alignment check rather
+  // than a restatement of whatever the markup happens to produce.
+  const designRow = await page.evaluate(() => {
+    const left = (el) => (el ? Math.round(el.getBoundingClientRect().left) : null);
+    const width = (el) => (el ? Math.round(el.getBoundingClientRect().width) : null);
+    const bottom = (el) => (el ? Math.round(el.getBoundingClientRect().bottom) : null);
+    const byName = (n) => document.querySelector(`input[name="${n}"]`);
+    const design = [byName("chalanNo"), byName("partyDesignNo"), byName("computerDesignNo")];
+    const above = ["date", "partyId", "karigarId"].map((id) => document.getElementById(id));
+    return {
+      widths: design.map(width),
+      lefts: design.map(left),
+      bottoms: design.map(bottom),
+      aboveLefts: above.map(left),
+      hint: document.querySelector("main").innerText.includes("more than one job work"),
+    };
+  });
+  check(
+    "the three design-number fields line up with the row above them",
+    new Set(designRow.widths).size === 1 &&
+      JSON.stringify(designRow.lefts) === JSON.stringify(designRow.aboveLefts),
+    JSON.stringify({ lefts: designRow.lefts, above: designRow.aboveLefts, widths: designRow.widths })
+  );
+  check(
+    "their bottom edges align, so no stray hint pushes one down",
+    new Set(designRow.bottoms).size === 1,
+    JSON.stringify(designRow.bottoms)
+  );
+  check("the chalan-can-repeat hint is gone", designRow.hint === false);
+
   const seen = [];
   for (const frac of [0, 0.5, 1]) {
     await scrollTo(frac);

@@ -69,6 +69,7 @@ export function JobWorkList({
                 status={r.status}
                 isBilled={r.isBilled}
                 partyName={r.partyName}
+                variant="stacked"
               />
             </div>
             </div>
@@ -87,7 +88,8 @@ export function JobWorkList({
               <th className="h-11 px-4 font-medium text-muted-foreground">Chalan</th>
               <th className="h-11 px-4 text-right font-medium text-muted-foreground">Pieces × Rate</th>
               <th className="h-11 px-4 text-right font-medium text-muted-foreground">Total</th>
-              <th className="h-11 px-4 font-medium text-muted-foreground">Status &amp; bill</th>
+              <th className="h-11 px-4 font-medium text-muted-foreground">Status</th>
+              <th className="h-11 px-4 font-medium text-muted-foreground">Bill status</th>
               <th className="h-11 w-10 px-4" />
             </tr>
           </thead>
@@ -121,15 +123,15 @@ export function JobWorkList({
                 </td>
                 {/* Changeable from here: the common case is a row whose work
                     has moved on, and opening the form to change one word is
-                    four clicks for a one-word change. */}
-                <td className="px-4 py-2">
-                  <RowProgress
-                    jobWorkId={r.id}
-                    status={r.status}
-                    isBilled={r.isBilled}
-                    partyName={r.partyName}
-                  />
-                </td>
+                    four clicks for a one-word change. RowProgress renders BOTH
+                    cells, so the two dropdowns share one piece of state and
+                    cannot disagree about the same row. */}
+                <RowProgress
+                  jobWorkId={r.id}
+                  status={r.status}
+                  isBilled={r.isBilled}
+                  partyName={r.partyName}
+                />
                 <td className="px-4 text-right">
                   <Link
                     href={`/job-work/${r.id}`}

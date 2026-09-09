@@ -1518,13 +1518,15 @@ console.log("\n--- DIALOG CANCEL AND DIRTY-GATING ---");
 // the bottom with no way to scroll down to it.
 console.log("\n--- STATUS AND BILL FROM THE LIST ---");
 {
-  // The owner asked to change these without opening the record. Two rules
-  // ride on it: billed requires Completed, and leaving Completed must clear
-  // billed — otherwise the list can produce a Pending-and-Billed row, which
-  // the form cannot, and the dashboard's "to invoice" figure would misread it.
+  // Two SEPARATE columns, both dropdowns always visible, with the bill one
+  // DISABLED until the status is Completed — the shape the owner asked for.
+  // Two rules ride on it: billed requires Completed, and leaving Completed
+  // clears billed, or the list could produce a Pending-and-Billed row that
+  // the form cannot reach and the dashboard's "to invoice" figure would
+  // misread.
   //
-  // This acts on whatever the FIRST row is, so it restores the value it found
-  // before finishing. The database holds the owner's real work.
+  // This acts on the owner's REAL first row, so it restores exactly what it
+  // found and asserts the restoration.
   await page.goto(BASE + "/job-work", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1200);
 
@@ -1535,10 +1537,17 @@ console.log("\n--- STATUS AND BILL FROM THE LIST ---");
     const read = () =>
       page.evaluate(() => {
         const row = document.querySelector("tbody tr");
+        const combos = [...row.querySelectorAll("[role=combobox]")];
+        const bill = combos[1];
         return {
-          combos: [...row.querySelectorAll("[role=combobox]")].map((c) => c.textContent.trim()),
-          locked: Boolean(row.querySelector("span[title*='Completed']")),
           heads: [...document.querySelectorAll("thead th")].map((t) => t.textContent.trim()),
+          status: combos[0]?.textContent.trim() ?? null,
+          bill: bill?.textContent.trim() ?? null,
+          billDisabled: bill ? bill.hasAttribute("disabled") : null,
+          billCursor: bill ? getComputedStyle(bill).cursor : null,
+          billTitle: bill?.closest("span[title]")?.getAttribute("title") ?? null,
+          statusCol: combos[0]?.closest("td")?.cellIndex ?? null,
+          billCol: bill?.closest("td")?.cellIndex ?? null,
         };
       });
 
@@ -1549,24 +1558,48 @@ console.log("\n--- STATUS AND BILL FROM THE LIST ---");
       await page.waitForTimeout(1500);
     };
 
-    const start = await read();
+    const started = await read();
     check(
-      "the list column reads Chalan, and Design is gone from it",
-      start.heads.includes("Chalan") && !start.heads.some((h) => /Design/i.test(h)),
-      JSON.stringify(start.heads)
+      "Status and Bill status are separate columns",
+      started.heads.includes("Status") &&
+        started.heads.includes("Bill status") &&
+        started.statusCol !== null &&
+        started.billCol === started.statusCol + 1,
+      JSON.stringify({ heads: started.heads, statusCol: started.statusCol, billCol: started.billCol })
     );
     check(
-      "status is a dropdown in the row, not a badge",
-      start.combos.length >= 1,
-      JSON.stringify(start.combos)
+      "the Chalan column carries no design number",
+      started.heads.includes("Chalan") && !started.heads.some((h) => /Design/i.test(h)),
+      JSON.stringify(started.heads)
     );
 
-    await pick(0, "Completed");
-    const completed = await read();
+    // Observe the disabled state for real, whatever the row started as.
+    if (started.status !== "Pending") await pick(0, "Pending");
+    const pending = await read();
     check(
-      "marking Completed reveals the bill dropdown",
-      completed.combos.length === 2 && completed.locked === false,
-      JSON.stringify(completed)
+      "while not Completed the bill dropdown is present but disabled",
+      pending.billDisabled === true &&
+        pending.billCursor === "not-allowed" &&
+        /only be billed once/i.test(pending.billTitle ?? ""),
+      JSON.stringify({ disabled: pending.billDisabled, cursor: pending.billCursor, title: pending.billTitle })
+    );
+
+    // Disabled must mean it does not open — not merely that it looks grey.
+    // Escape afterwards regardless: a stray open menu blocks the next click,
+    // which is what broke the first version of this probe.
+    await page.locator("tbody tr [role=combobox]").nth(1).click({ force: true }).catch(() => {});
+    await page.waitForTimeout(400);
+    const opened = await page.evaluate(() => document.querySelectorAll('[role="option"]').length);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(250);
+    check("clicking the disabled bill dropdown opens nothing", opened === 0, `${opened} options`);
+
+    await pick(0, "Completed");
+    const done = await read();
+    check(
+      "Completed enables the bill dropdown",
+      done.billDisabled === false && done.billCursor === "pointer",
+      JSON.stringify({ disabled: done.billDisabled, cursor: done.billCursor })
     );
 
     await pick(1, "Billed");
@@ -1575,31 +1608,30 @@ console.log("\n--- STATUS AND BILL FROM THE LIST ---");
     const billed = await read();
     check(
       "Billed survives a reload — it reached the database",
-      billed.combos[1] === "Billed",
-      JSON.stringify(billed.combos)
+      billed.bill === "Billed",
+      JSON.stringify({ status: billed.status, bill: billed.bill })
     );
 
-    // The invariant: away from Completed cannot stay Billed.
     await pick(0, "Pending");
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.waitForTimeout(1400);
-    const back = await read();
+    const cleared = await read();
     check(
-      "leaving Completed clears Billed, and the bill control locks",
-      back.combos.length === 1 && back.locked === true,
-      JSON.stringify(back)
+      "leaving Completed clears Billed and disables the control again",
+      cleared.bill === "Not billed" && cleared.billDisabled === true,
+      JSON.stringify({ status: cleared.status, bill: cleared.bill, disabled: cleared.billDisabled })
     );
 
-    // Put the row back the way it was found.
-    if (start.combos[0] !== "Pending") {
-      await pick(0, start.combos[0]);
-      if (start.combos[1] === "Billed") await pick(1, "Billed");
-    }
-    const restored = await read();
+    // Put the row back exactly as it was found.
+    if (started.status !== "Pending") await pick(0, started.status);
+    if (started.bill === "Billed" && started.status === "Completed") await pick(1, "Billed");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(1300);
+    const final = await read();
     check(
-      "the row is restored to the value it started with",
-      restored.combos[0] === start.combos[0],
-      `started=${start.combos.join("/")} now=${restored.combos.join("/")}`
+      "the row is restored to exactly what it started as",
+      final.status === started.status && final.bill === started.bill,
+      `started=${started.status}/${started.bill} now=${final.status}/${final.bill}`
     );
   }
 }

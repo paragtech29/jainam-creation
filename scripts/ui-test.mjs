@@ -1341,6 +1341,29 @@ console.log("\n--- DASHBOARD ---");
   );
   check("the three part-tiles carry a status dot", hero.dots === 3, `${hero.dots} dots`);
 
+  // A focus ring is painted OUTSIDE the control it belongs to, so a control
+  // sitting flush against a scrolling edge has its ring sliced off — which is
+  // what the owner saw as a line above the month select (measured headroom: 0
+  // against the scroller). Asserting the gap is what keeps the picker out of
+  // the scroll region rather than merely looking like it.
+  const headroom = await page.evaluate(() => {
+    const control = document.querySelector("main [role=combobox]");
+    if (!control) return null;
+    let el = control.parentElement;
+    while (el && el !== document.body) {
+      if (/(auto|scroll|hidden)/.test(getComputedStyle(el).overflowY)) {
+        return Math.round(control.getBoundingClientRect().top - el.getBoundingClientRect().top);
+      }
+      el = el.parentElement;
+    }
+    return null;
+  });
+  check(
+    "the month picker is not flush against a clipping edge",
+    headroom !== null && headroom >= 4,
+    `headroom ${headroom}px`
+  );
+
   // Any month of any year is TWO clicks. With arrows alone, January 2026 was
   // nine clicks from September and January 2025 was twenty-one — far enough
   // that the owner concluded last year's job works had never been seeded.

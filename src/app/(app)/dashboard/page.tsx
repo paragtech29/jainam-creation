@@ -135,9 +135,14 @@ export default async function DashboardPage({
   const biggest = summary.byParty[0]?.total ?? 0;
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto flex flex-col gap-4">
-      {/* The month is named ONCE, by the picker's own selects. */}
-      <div className="flex flex-wrap items-center justify-end gap-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      {/* The month is named ONCE, by the picker's own selects.
+
+          Outside the scroller below, deliberately: a focus ring is painted
+          outside its control, so a control sitting flush against a scrolling
+          edge has its ring clipped. It also keeps the picker in place while
+          the figures it controls scroll. */}
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-3">
         {/* No heading: the month and year selects name the month, and naming
             it twice on one row is what the owner objected to before. */}
         <MonthPicker
@@ -150,6 +155,7 @@ export default async function DashboardPage({
         />
       </div>
 
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
       <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))] xl:[grid-template-columns:repeat(4,minmax(0,1fr))]">
         <div className="flex flex-col gap-2.5 rounded-[15px] bg-sidebar p-[17px_18px]">
           <span className="text-[10.5px] font-medium uppercase tracking-[0.13em] text-sidebar-meta">
@@ -307,6 +313,7 @@ export default async function DashboardPage({
             </div>
           )}
         </section>
+      </div>
       </div>
     </div>
   );

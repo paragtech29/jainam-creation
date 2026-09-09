@@ -1319,6 +1319,35 @@ console.log("\n--- DASHBOARD ---");
   const money = (t) => Number(String(t ?? "").replace(/[^0-9]/g, ""));
 
   const now = await glance();
+  // Five, at the owner's request. Asserted with MORE than five job works in
+  // the database, or the check would pass on a short list and prove nothing.
+  const recent = await page.evaluate(() => {
+    const panel = [...document.querySelectorAll("main section")].find((s) =>
+      /Recent job work/.test(s.textContent || "")
+    );
+    return {
+      rows: panel ? panel.querySelectorAll("a[href^='/job-work/']").length : null,
+      hasViewAll: Boolean(
+        [...(panel?.querySelectorAll("a") ?? [])].find((a) => /View all/.test(a.textContent || ""))
+      ),
+    };
+  });
+  const totalJobWorks = await page.evaluate(async () => {
+    const res = await fetch("/job-work");
+    const html = await res.text();
+    const m = html.match(/of (d+)/);
+    return m ? Number(m[1]) : null;
+  });
+  if ((totalJobWorks ?? 0) <= 5) {
+    skip("recent job work is capped at five", `only ${totalJobWorks} job works exist`);
+  } else {
+    check(
+      "recent job work shows five, with the rest behind View all",
+      recent.rows === 5 && recent.hasViewAll === true,
+      JSON.stringify({ ...recent, totalJobWorks })
+    );
+  }
+
   check(
     "the dashboard carries a year strip linking to the year report",
     now.yearHref !== null && /period=year/.test(now.yearHref) && money(now.yearTotal) > 0,

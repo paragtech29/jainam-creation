@@ -66,7 +66,9 @@ export default async function DashboardPage({
     getMonthSummary(userId, prevBounds.from, prevBounds.to),
     getMonthSummary(userId, `${year}-01-01`, `${year}-12-31`),
     getJobWorkDateRange(userId),
-    listJobWorksPage(userId, { page: 1, pageSize: 6 }),
+    // Five, at the owner's request. "Recent" is a glance, not a list — the
+    // full register is one tap away under Job Work.
+    listJobWorksPage(userId, { page: 1, pageSize: 5 }),
   ]);
 
   // Stop the picker wandering into empty years in either direction. Forward

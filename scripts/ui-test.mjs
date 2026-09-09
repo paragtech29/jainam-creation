@@ -45,6 +45,7 @@ const ROUTES = [
   ["karigars", "/karigars"],
   ["jobwork", "/job-work"],
   ["jobwork-new", "/job-work/new"],
+  ["reports", "/reports"],
   ["settings", "/settings"],
 ];
 
@@ -1920,6 +1921,104 @@ console.log("\n--- DELETE SITS WITH THE OTHER ACTIONS ---");
       Boolean(document.querySelector('input[name="pieces"]'))
     );
     check("cancelling the delete leaves the record open and intact", stillHere);
+  }
+}
+
+console.log("\n--- REPORTS ---");
+{
+  // The owner's four reports — monthly all / monthly per party / yearly all /
+  // yearly per party — are one screen: a PERIOD and a GROUPING.
+  //
+  // The check that matters is not "the table renders" but that the arithmetic
+  // cannot lie. Grouping the SAME year three different ways must produce the
+  // same grand total: if grouping could invent or lose money, every figure on
+  // this screen would be worthless.
+  const table = () =>
+    page.evaluate(() => {
+      const foot = [...document.querySelectorAll("tfoot tr td")].map((td) => td.textContent.trim());
+      return {
+        heads: [...document.querySelectorAll("thead th")].map((th) => th.textContent.trim()),
+        rows: [...document.querySelectorAll("tbody tr")].map((tr) =>
+          [...tr.children].map((td) => td.textContent.trim())
+        ),
+        foot,
+        grand: foot.length ? foot[foot.length - 1] : null,
+        title: document.querySelector("main h2")?.textContent?.trim() ?? null,
+      };
+    });
+  const money = (t) => Number(String(t ?? "").replace(/[^0-9]/g, ""));
+
+  await page.goto(BASE + "/reports", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1500);
+  const byParty = await table();
+
+  if (byParty.rows.length === 0) {
+    skip("reports", "no job work in the current month");
+  } else {
+    check(
+      "the report opens on this month, grouped by party",
+      byParty.heads[0] === "Party" && /\w+ \d{4}/.test(byParty.title ?? ""),
+      JSON.stringify({ title: byParty.title, heads: byParty.heads })
+    );
+    check(
+      "its grand total is the sum of its own rows",
+      money(byParty.grand) ===
+        byParty.rows.reduce((a, r) => a + money(r[r.length - 1]), 0),
+      `grand=${byParty.grand} rows=${byParty.rows.map((r) => r[r.length - 1]).join("+")}`
+    );
+
+    // The invariant. Three groupings, one year, one answer.
+    const totals = {};
+    for (const g of ["party", "karigar", "month", "none"]) {
+      await page.goto(BASE + `/reports?period=year&groupBy=${g}`, { waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(1200);
+      totals[g] = money((await table()).grand);
+    }
+    check(
+      "grouping the same year four ways gives the same total",
+      new Set(Object.values(totals)).size === 1,
+      JSON.stringify(totals)
+    );
+
+    // And the file must say what the screen says.
+    await page.goto(BASE + "/reports?period=year&groupBy=party", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(1200);
+    const onScreen = await table();
+    let file = null;
+    try {
+      const [dl] = await Promise.all([
+        page.waitForEvent("download", { timeout: 20000 }),
+        page.click('a:has-text("Export")'),
+      ]);
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.readFile(await dl.path());
+      const ws = wb.worksheets[0];
+      const rows = [];
+      ws.eachRow((row, n) => {
+        if (n >= 3) rows.push(row.values.slice(1));
+      });
+      file = {
+        name: dl.suggestedFilename(),
+        context: String(ws.getCell("A2").value ?? ""),
+        header: rows[0],
+        total: rows[rows.length - 1]?.[6],
+        dataRows: rows.length - 2,
+      };
+    } catch {}
+
+    check(
+      "the report exports as a summary that matches the screen",
+      file !== null &&
+        /\.xlsx$/.test(file.name) &&
+        file.total === money(onScreen.grand) &&
+        file.dataRows === onScreen.rows.length,
+      JSON.stringify(file)
+    );
+    check(
+      "the file says which period and grouping it is",
+      file !== null && /2026/.test(file.context) && /by party/i.test(file.context),
+      String(file?.context)
+    );
   }
 }
 

@@ -32,6 +32,9 @@ function metaFor(pathname: string): Meta {
   if (pathname === "/job-work")
     return { title: "Job Work", sub: "Every chalan you take from a party", action: { label: "Add job work", href: "/job-work/new" } };
 
+  if (pathname.startsWith("/reports"))
+    return { title: "Reports", sub: "What each party gave you, by month or by year" };
+
   if (pathname.startsWith("/settings")) return { title: "Settings", sub: "Your account" };
 
   return { title: "Dashboard", sub: "Everything moving through the shop today" };

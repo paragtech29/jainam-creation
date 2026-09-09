@@ -446,3 +446,104 @@ export async function setJobWorkProgress(
     .returning();
   return row ?? null;
 }
+
+// ─────────────────────────── report summaries ───────────────────────────
+// The owner's four reports — monthly all / monthly per party / yearly all /
+// yearly per party — are two choices, not four queries: a DATE RANGE and a
+// GROUPING. One function covers them, and covers "by karigar" and "by month"
+// for free.
+//
+// Every figure is summed in SQL. The dashboard learned this the hard way: it
+// used to pull up to 1000 rows and add them in JavaScript, which was silently
+// wrong past the page size. A report that quietly omits the 1001st job work is
+// worse than no report.
+
+export type ReportGroupBy = "party" | "karigar" | "month" | "none";
+
+export type ReportRow = {
+  /** Stable id for the group — a party/karigar id, a "YYYY-MM", or "all". */
+  key: string;
+  label: string;
+  count: number;
+  pieces: number;
+  total: number;
+  /** Completed and invoiced. */
+  billed: number;
+  /** Completed but not yet invoiced — the money he still has to bill for. */
+  toInvoice: number;
+  /** Not finished yet. */
+  pending: number;
+};
+
+export async function getReportRows(
+  userId: string,
+  opts: { from: string; to: string; groupBy: ReportGroupBy }
+): Promise<ReportRow[]> {
+  const inRange = and(
+    eq(jobWorks.userId, userId),
+    gte(jobWorks.date, opts.from),
+    lte(jobWorks.date, opts.to)
+  );
+
+  // The same four money buckets the dashboard shows, so a report and the
+  // dashboard can never tell him different things about the same month.
+  const figures = {
+    count: sql<number>`count(*)::int`,
+    pieces: sql<number>`coalesce(sum(${jobWorks.pieces}), 0)::int`,
+    total: sql<number>`coalesce(sum(${jobWorks.total}), 0)::int`,
+    billed: sql<number>`coalesce(sum(${jobWorks.total}) filter (where ${jobWorks.isBilled} = true), 0)::int`,
+    toInvoice: sql<number>`coalesce(sum(${jobWorks.total}) filter (where ${jobWorks.status} = 'COMPLETED' and ${jobWorks.isBilled} = false), 0)::int`,
+    pending: sql<number>`coalesce(sum(${jobWorks.total}) filter (where ${jobWorks.status} <> 'COMPLETED'), 0)::int`,
+  };
+
+  if (opts.groupBy === "party") {
+    const rows = await db
+      .select({ key: parties.id, label: parties.name, ...figures })
+      .from(jobWorks)
+      .innerJoin(parties, eq(parties.id, jobWorks.partyId))
+      .where(inRange)
+      .groupBy(parties.id, parties.name)
+      .orderBy(desc(sql`sum(${jobWorks.total})`));
+    return rows;
+  }
+
+  if (opts.groupBy === "karigar") {
+    const rows = await db
+      .select({ key: silaiKarigars.id, label: silaiKarigars.name, ...figures })
+      .from(jobWorks)
+      .innerJoin(silaiKarigars, eq(silaiKarigars.id, jobWorks.karigarId))
+      .where(inRange)
+      .groupBy(silaiKarigars.id, silaiKarigars.name)
+      .orderBy(desc(sql`sum(${jobWorks.total})`));
+    return rows;
+  }
+
+  if (opts.groupBy === "month") {
+    // `date` is a DATE column, so this is a plain prefix — no timezone maths,
+    // and no chance of a job work sliding into the previous month the way a
+    // timestamp conversion would allow.
+    const monthKey = sql<string>`to_char(${jobWorks.date}, 'YYYY-MM')`;
+    const rows = await db
+      .select({ key: monthKey, label: monthKey, ...figures })
+      .from(jobWorks)
+      .where(inRange)
+      .groupBy(monthKey)
+      .orderBy(monthKey);
+    return rows;
+  }
+
+  const [row] = await db.select({ ...figures }).from(jobWorks).where(inRange);
+  // One row, so the table and its total agree even when nothing is grouped.
+  return [
+    {
+      key: "all",
+      label: "All parties",
+      count: row?.count ?? 0,
+      pieces: row?.pieces ?? 0,
+      total: row?.total ?? 0,
+      billed: row?.billed ?? 0,
+      toInvoice: row?.toInvoice ?? 0,
+      pending: row?.pending ?? 0,
+    },
+  ];
+}

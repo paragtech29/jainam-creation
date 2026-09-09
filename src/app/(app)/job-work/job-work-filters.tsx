@@ -39,9 +39,20 @@ export function JobWorkFilters({
   const active = activeKeys.length > 0;
 
   const label = "text-xs font-medium text-secondary-foreground";
-  // Every dropdown gets the SAME width. They were sizing themselves to their
-  // own content, so the row came out ragged — Status wide, Bill status narrow.
-  const dropdown = "flex w-[184px] flex-col gap-1.5";
+  // Width follows CONTENT, in two ranks. One width for everything read well
+  // in isolation but pushed the bar onto three rows at 1366 — Status and Bill
+  // status wrapped to a line of their own while each carried ~110px of empty
+  // space.
+  //
+  // The numbers are measured, not guessed. In this font the widest option in
+  // each list is "In Progress" at 73px and "Not billed" at 62px; a trigger
+  // adds 18px of padding plus ~22px for the chevron and its gap. The status
+  // lists are FIXED — they can never grow — so those two can be sized exactly.
+  // Party and karigar hold names from the data, so they keep the roomier
+  // width and truncate beyond it.
+  const nameDropdown = "flex w-[160px] flex-col gap-1.5";
+  const statusDropdown = "flex w-[118px] flex-col gap-1.5";
+  const billDropdown = "flex w-[106px] flex-col gap-1.5";
   // A date input is wider than its text: the picker icon and the dd/mm/yyyy
   // placeholder both need room, and Chrome will not shrink below that.
   const dateInput =
@@ -95,10 +106,14 @@ export function JobWorkFilters({
         {/* Search sits with the other filters rather than floating above them —
             it is the same act, narrowing the list. Given two columns because
             a chalan or design number needs the room. */}
-        <label className="flex min-w-[220px] flex-1 flex-col gap-1.5 sm:max-w-[320px]">
+        <label className="flex min-w-[170px] flex-1 flex-col gap-1.5 sm:max-w-[320px]">
           <span className={label}>Search</span>
           <SearchInput
-            placeholder="Chalan no., design no., party or karigar"
+            // Short enough not to truncate mid-word now that Search flexes
+            // into whatever the fixed fields leave (183px at 1366). It still
+            // searches design numbers and karigars - a placeholder is a hint,
+            // not the full specification.
+            placeholder="Chalan or party"
             className="w-full max-w-none"
             height="h-10"
           />
@@ -129,7 +144,7 @@ export function JobWorkFilters({
           </div>
         </div>
 
-        <label className={dropdown}>
+        <label className={nameDropdown}>
           <span className={label}>Party</span>
           <SimpleSelect
             value={get("party") || "all"}
@@ -141,7 +156,7 @@ export function JobWorkFilters({
           />
         </label>
 
-        <label className={dropdown}>
+        <label className={nameDropdown}>
           <span className={label}>Silai karigar</span>
           <SimpleSelect
             value={get("karigar") || "all"}
@@ -153,7 +168,7 @@ export function JobWorkFilters({
           />
         </label>
 
-        <label className={dropdown}>
+        <label className={statusDropdown}>
           <span className={label}>Status</span>
           <SimpleSelect
             value={get("status") || "any"}
@@ -170,7 +185,7 @@ export function JobWorkFilters({
           />
         </label>
 
-        <label className={dropdown}>
+        <label className={billDropdown}>
           <span className={label}>Bill status</span>
           <SimpleSelect
             value={get("billed") || "any"}

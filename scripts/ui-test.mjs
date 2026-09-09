@@ -967,13 +967,66 @@ console.log("\n--- FILTER LABELS ---");
   // The from/to pair share one border. Two separate boxes let you set half a
   // range and wonder why the list did not change.
   check("the date range is one box, not two", panel.oneDateBox, `dates=${panel.dateCount}`);
-  // Equal widths: the containers matched before this check existed while the
-  // select TRIGGERS inside them sized to their own text (106/113/110/68px
-  // measured), which is exactly the raggedness the owner saw.
+  // Widths come in two ranks, sized from CONTENT. One width for all four read
+  // well in isolation but pushed the bar onto two rows at 1366, with Status
+  // and Bill status wrapping to a line of their own while each carried ~110px
+  // of empty space. Party and karigar hold names from the data and stay
+  // roomier; the two status lists are fixed and can never grow, so they are
+  // sized to their widest option ("In Progress" 73px, "Not billed" 62px, plus
+  // 18px padding and ~22px for the chevron).
   check(
-    "every filter dropdown is the same width",
-    panel.selectWidths.length >= 4 && new Set(panel.selectWidths).size === 1,
+    "party and karigar share one width; the status filters share a smaller one",
+    panel.selectWidths.length >= 4 &&
+      panel.selectWidths[0] === panel.selectWidths[1] &&
+      panel.selectWidths[2] === 118 &&
+      panel.selectWidths[3] === 106 &&
+      panel.selectWidths[2] < panel.selectWidths[0],
     JSON.stringify(panel.selectWidths)
+  );
+
+  // The point of all of it: ONE row on a laptop. Tops are clustered rather
+  // than compared exactly — fields on the same visual row differ by a couple
+  // of pixels because their labels are not all the same height, and an exact
+  // comparison reported three rows where there were two.
+  const rowsAt = async (width) => {
+    await page.setViewportSize({ width, height: 800 });
+    await page.waitForTimeout(500);
+    return page.evaluate(() => {
+      const tops = [...document.querySelectorAll("#job-work-filter-fields > *")]
+        .map((el) => Math.round(el.getBoundingClientRect().top))
+        .sort((a, b) => a - b);
+      let rows = 0;
+      let last = -999;
+      for (const t of tops) {
+        if (t - last > 20) rows++;
+        last = t;
+      }
+      return rows;
+    });
+  };
+  const wide = await rowsAt(1440);
+  const laptop = await rowsAt(1366);
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.waitForTimeout(400);
+  check("the whole filter bar fits on one row at 1366 and 1440", laptop === 1 && wide === 1, `1366=${laptop} 1440=${wide}`);
+
+  // A placeholder cut off mid-word looks like a rendering fault.
+  const searchFits = await page.evaluate(() => {
+    const i = document.querySelector('#job-work-filter-fields input[type="search"], #job-work-filter-fields input:not([type])');
+    if (!i) return null;
+    const probe = document.createElement("span");
+    const cs = getComputedStyle(i);
+    probe.style.cssText = `position:absolute;visibility:hidden;white-space:nowrap;font:${cs.font};`;
+    probe.textContent = i.placeholder;
+    document.body.appendChild(probe);
+    const w = probe.getBoundingClientRect().width;
+    probe.remove();
+    return { text: i.placeholder, textW: Math.ceil(w), room: Math.round(i.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) };
+  });
+  check(
+    "the search placeholder is not cut off",
+    searchFits !== null && searchFits.textW <= searchFits.room,
+    JSON.stringify(searchFits)
   );
 }
 

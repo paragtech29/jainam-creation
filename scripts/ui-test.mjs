@@ -234,10 +234,19 @@ for (const [name, path] of ROUTES) {
   await page.waitForTimeout(800);
   const m = await page.evaluate(() => ({
     hScroll: document.documentElement.scrollWidth > window.innerWidth + 1,
+    // The comment above always claimed this check covered the document
+    // scrolling, but the code only ever measured the SIDEWAYS axis — which is
+    // how /job-work/new came to scroll vertically, show a screenful of empty
+    // background below the app and put two scrollbars on screen, with the
+    // suite green. A check has to measure what its comment promises.
+    vScroll: document.documentElement.scrollHeight > window.innerHeight + 1,
     crashed: /Application error|Unhandled Runtime/i.test(document.body.innerText),
   }));
-  check(`${name}: renders clean`, jsErrors.length === before && !m.crashed && !m.hScroll,
-    `js=${jsErrors.length - before} hScroll=${m.hScroll}`);
+  check(
+    `${name}: renders clean`,
+    jsErrors.length === before && !m.crashed && !m.hScroll && !m.vScroll,
+    `js=${jsErrors.length - before} hScroll=${m.hScroll} vScroll=${m.vScroll}`
+  );
 }
 
 // ─────────────────────────── pagination rules ───────────────────────────

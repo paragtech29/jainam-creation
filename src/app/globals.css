@@ -215,6 +215,40 @@
   html {
     @apply font-sans;
   }
+  /* THE DOCUMENT DOES NOT SCROLL. The shell is h-svh with overflow hidden and
+     every page owns its own scroll region, but nothing was enforcing that at
+     the document level - so on /job-work/new the page ALSO scrolled, showing a
+     screenful of empty background below the app and putting two scrollbars on
+     screen at once. The form itself was fine (its scroller held all 1268px of
+     content in 657px of space); what escaped was invisible, which is exactly
+     why it needs clamping here rather than hunting one component.
+     The @media print block below releases both of these, or only the first
+     screenful of a printed table survives. */
+  /* Radix renders a hidden NATIVE control beside each Select and Switch so
+     they post with a plain form — a 1px <select> and an invisible checkbox.
+     Both are position:absolute with no positioned ancestor, so their
+     containing block is the viewport: they escape every overflow on the way
+     up and extend the DOCUMENT to wherever their trigger happens to sit.
+     On /job-work/new that pushed the document to 1055px inside a 768px
+     viewport, so the page grew a second scrollbar and scrolled to reveal a
+     screenful of empty background below the app — while the form scroller
+     itself was working correctly the whole time.
+     They are invisible and their position is meaningless, so pin them to the
+     origin. Fixed here rather than per component because the next Select or
+     Switch would otherwise reintroduce it. */
+  select[aria-hidden="true"],
+  input[aria-hidden="true"][type="checkbox"] {
+    top: 0;
+    left: 0;
+  }
+
+  html,
+  body {
+    overflow: hidden;
+    /* No rubber-band on a phone either: bouncing the whole app to reveal
+       blank background is the same defect with a different gesture. */
+    overscroll-behavior: none;
+  }
   /* Headings use the heavier display face, matching the source app. */
   h1,
   h2,

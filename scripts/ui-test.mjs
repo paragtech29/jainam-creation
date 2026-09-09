@@ -1295,6 +1295,63 @@ console.log("\n--- DASHBOARD ---");
   );
   check("the three part-tiles carry a status dot", hero.dots === 3, `${hero.dots} dots`);
 
+  // The year, and whether the month is up or down. Both were added because a
+  // bare figure cannot answer "is this a good month?" — but the comparison has
+  // to be against the month BEFORE THE SELECTED ONE, not against a fixed
+  // "last month": stepping back to July must compare July with June, or the
+  // number on screen quietly describes a different pair of months.
+  const glance = () =>
+    page.evaluate(() => {
+      const t = document.querySelector("main").innerText.replace(/\s+/g, " ");
+      const strip = [...document.querySelectorAll("main a")].find((a) =>
+        /so far/.test(a.textContent || "")
+      );
+      const m = t.match(/([▲▼=]) (\d+)% vs ([A-Za-z]+ \d{4})/);
+      return {
+        earned: (t.match(/EARNED ₹([\d,]+)/) || [])[1] ?? null,
+        comparedWith: m ? m[3] : null,
+        percent: m ? Number(m[2]) : null,
+        direction: m ? m[1] : null,
+        yearHref: strip?.getAttribute("href") ?? null,
+        yearTotal: (strip?.textContent.match(/₹([\d,]+)/) || [])[1] ?? null,
+      };
+    });
+  const money = (t) => Number(String(t ?? "").replace(/[^0-9]/g, ""));
+
+  const now = await glance();
+  check(
+    "the dashboard carries a year strip linking to the year report",
+    now.yearHref !== null && /period=year/.test(now.yearHref) && money(now.yearTotal) > 0,
+    JSON.stringify({ href: now.yearHref, total: now.yearTotal })
+  );
+
+  // Step back one month and the comparison must move with it.
+  await page.click('button[aria-label="Previous month"]');
+  await page.waitForTimeout(1200);
+  const stepped = await glance();
+  const heading = await page.evaluate(() => document.querySelector("main h2")?.textContent?.trim());
+  check(
+    "the comparison follows the month being viewed",
+    stepped.comparedWith !== null &&
+      stepped.comparedWith !== now.comparedWith &&
+      stepped.comparedWith !== heading,
+    JSON.stringify({ heading, comparedWith: stepped.comparedWith, was: now.comparedWith })
+  );
+
+  // The percentage must be arithmetic, not decoration: compare the two months'
+  // Earned figures directly.
+  const earnedNow = money(now.earned);
+  const earnedPrev = money(stepped.earned);
+  const expected = earnedPrev > 0 ? Math.round(((earnedNow - earnedPrev) / earnedPrev) * 100) : null;
+  check(
+    "the percentage matches the two months it compares",
+    expected === null || now.percent === Math.abs(expected),
+    `shown=${now.direction}${now.percent}% computed=${expected}% (${now.earned} vs ${stepped.earned})`
+  );
+
+  await page.goto(BASE + "/dashboard", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(900);
+
   check(
     "the month is named exactly once, as the page heading",
     monthLabels.length === 1 && monthLabels[0].includes("text-[21px]"),

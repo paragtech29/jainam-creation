@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ClipboardList, Building2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { getCurrentUserId } from "@/lib/session";
 import {
   listJobWorksPage,
@@ -29,6 +30,13 @@ function monthBounds(month: string) {
   };
 }
 
+/** "2026-09" -> "2026-08", rolling the year over. */
+function previousMonth(month: string) {
+  const [y, m] = month.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 2, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
 function thisMonth() {
   const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`;
@@ -46,8 +54,17 @@ export default async function DashboardPage({
   const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.month ?? "") ? sp.month! : thisMonth();
   const { from, to, label } = monthBounds(month);
 
-  const [summary, range, recentPage] = await Promise.all([
+  // The month BEFORE the selected one — not "last month" in absolute terms.
+  // Stepping back to July must compare July with June, or the comparison is
+  // quietly about a different pair of months than the one on screen.
+  const prev = previousMonth(month);
+  const prevBounds = monthBounds(prev);
+  const year = month.slice(0, 4);
+
+  const [summary, prevSummary, yearSummary, range, recentPage] = await Promise.all([
     getMonthSummary(userId, from, to),
+    getMonthSummary(userId, prevBounds.from, prevBounds.to),
+    getMonthSummary(userId, `${year}-01-01`, `${year}-12-31`),
     getJobWorkDateRange(userId),
     listJobWorksPage(userId, { page: 1, pageSize: 6 }),
   ]);
@@ -72,6 +89,15 @@ export default async function DashboardPage({
     value: inr(summary.total),
     note: `${summary.count} job ${summary.count === 1 ? "work" : "works"} this month`,
   };
+
+  // "Is this a good month?" is the question a bare figure cannot answer.
+  // A percentage needs something to divide by, so with no previous month the
+  // comparison is simply absent rather than shown as an infinite rise.
+  const prevLabel = monthBounds(prev).label;
+  const change =
+    prevSummary.total > 0
+      ? Math.round(((summary.total - prevSummary.total) / prevSummary.total) * 100)
+      : null;
   const tiles = [
     {
       label: "Pending",
@@ -120,6 +146,16 @@ export default async function DashboardPage({
             {earned.value}
           </span>
           <span className="text-xs text-sidebar-meta">{earned.note}</span>
+          {change !== null ? (
+            <span
+              className={cn(
+                "text-xs font-medium",
+                change > 0 ? "text-status-completed" : change < 0 ? "text-status-pending" : "text-sidebar-meta"
+              )}
+            >
+              {change > 0 ? "▲" : change < 0 ? "▼" : "="} {Math.abs(change)}% vs {prevLabel}
+            </span>
+          ) : null}
         </div>
 
         {tiles.map((t) => (
@@ -142,6 +178,25 @@ export default async function DashboardPage({
           </div>
         ))}
       </div>
+
+      {/* The year, on its own line BELOW the month tiles rather than beside
+          them. A year figure sitting in that row would put two time windows
+          in one rank of tiles — the confusion this dashboard already had once,
+          when some tiles were all-time while the headline said this month. */}
+      <Link
+        href={`/reports?period=year&year=${year}&groupBy=party`}
+        className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 rounded-[12px] border border-border bg-card px-4 py-2.5 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <span className="text-[13px] text-muted-foreground">
+          {year} so far
+          <span className="ml-2 font-mono text-[15px] font-bold tabular-nums text-foreground">
+            {inr(yearSummary.total)}
+          </span>
+        </span>
+        <span className="text-[12.5px] text-muted-foreground">
+          {yearSummary.count} job {yearSummary.count === 1 ? "work" : "works"} · see the full report →
+        </span>
+      </Link>
 
       <div className="grid items-stretch gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(330px,1fr))] xl:[grid-template-columns:minmax(0,1.55fr)_minmax(0,1fr)]">
         <section className="overflow-hidden rounded-[14px] border border-border bg-card">

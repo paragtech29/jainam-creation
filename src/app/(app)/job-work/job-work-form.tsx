@@ -532,16 +532,22 @@ export function JobWorkForm({
                 without being touched. */}
             <Field>
               <FieldLabel htmlFor="total-preview">Total</FieldLabel>
+              {/* The sum sits INSIDE the box, left of the answer, rather than
+                  as a caption underneath it: the two belong to one another,
+                  and a line under the field read as a hint about the field
+                  instead of as the arithmetic. */}
               <output
                 id="total-preview"
                 aria-live="polite"
-                className="flex h-[42px] items-center justify-end rounded-[10px] border border-border bg-accent/50 px-3 font-mono text-lg font-bold tabular-nums tracking-tight"
+                className="flex h-[42px] items-center justify-between gap-2 rounded-[10px] border border-border bg-accent/50 px-3 font-mono tabular-nums"
               >
-                ₹{totalPreview.toLocaleString("en-IN")}
+                <span className="text-[12.5px] text-muted-foreground">
+                  {draft.pieces || 0} × ₹{rateHook.rate || 0}
+                </span>
+                <span className="text-lg font-bold tracking-tight">
+                  ₹{totalPreview.toLocaleString("en-IN")}
+                </span>
               </output>
-              <FieldDescription className="font-mono tabular-nums">
-                {draft.pieces || 0} × ₹{rateHook.rate || 0}
-              </FieldDescription>
             </Field>
           </div>
         </FieldSet>

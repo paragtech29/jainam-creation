@@ -1792,6 +1792,34 @@ console.log("\n--- JOB WORK FORM ACTIONS ---");
     new Set(designRow.bottoms).size === 1,
     JSON.stringify(designRow.bottoms)
   );
+
+  // The pieces x rate sum belongs INSIDE the total box, beside the answer -
+  // not as a caption underneath, which read as a hint about the field and left
+  // the box bottom out of line with Pieces and Rate.
+  const totalBox = await page.evaluate(() => {
+    const out = document.querySelector("#total-preview");
+    if (!out) return null;
+    const box = out.getBoundingClientRect();
+    const pieces = document.querySelector('input[name="pieces"]');
+    return {
+      text: out.textContent.replace(/s+/g, " ").trim(),
+      spanCount: out.querySelectorAll("span").length,
+      below: [...(out.parentElement?.children ?? [])]
+        .filter((c) => c !== out && c.getBoundingClientRect().top >= box.bottom - 1)
+        .map((c) => c.textContent.trim())
+        .filter(Boolean),
+      bottomMatchesPieces:
+        Math.round(box.bottom) === Math.round(pieces.getBoundingClientRect().bottom),
+    };
+  });
+  check(
+    "the pieces x rate sum sits inside the total box, with nothing beneath it",
+    totalBox !== null &&
+      totalBox.spanCount === 2 &&
+      totalBox.below.length === 0 &&
+      totalBox.bottomMatchesPieces === true,
+    JSON.stringify(totalBox)
+  );
   check("the chalan-can-repeat hint is gone", designRow.hint === false);
 
   const seen = [];

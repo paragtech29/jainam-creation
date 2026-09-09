@@ -7,7 +7,6 @@ import { Pagination } from "@/components/pagination";
 import { EmptyState } from "@/components/empty-state";
 import { JobWorkFilters } from "./job-work-filters";
 import { JobWorkList } from "./job-work-list";
-import { ExportMenu } from "./export-menu";
 
 const PAGE_SIZE = 10;
 
@@ -31,7 +30,7 @@ export default async function JobWorkPage({
   const page = Math.max(1, Number(sp.page ?? "1") || 1);
 
   const userId = await getCurrentUserId();
-  const [{ rows, total, grandTotal }, parties, karigars] = await Promise.all([
+  const [{ rows, total }, parties, karigars] = await Promise.all([
     listJobWorksPage(userId, {
       search,
       from: sp.from,
@@ -93,7 +92,9 @@ export default async function JobWorkPage({
 
       {rows.length > 0 ? (
         <>
-          {/* Summed in SQL across the whole filtered set, not just this page. */}
+          {/* Pagination only. The view total and the export used to sit here
+              too; both now live on Reports, where "how much" is the question
+              being asked rather than a by-product of the current filter. */}
           <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-[14px] border border-border bg-card px-[18px] py-3">
             <Pagination
               className="flex-1 border-t-0 pt-0"
@@ -110,13 +111,6 @@ export default async function JobWorkPage({
                 billed: sp.billed,
               }}
             />
-            <span className="border-l border-border pl-4 text-[12.5px] text-secondary-foreground">
-              Total this view{" "}
-              <strong className="font-mono font-semibold tabular-nums text-foreground">
-                ₹{grandTotal.toLocaleString("en-IN")}
-              </strong>
-            </span>
-            <ExportMenu rowCount={total} />
           </div>
         </>
       ) : null}

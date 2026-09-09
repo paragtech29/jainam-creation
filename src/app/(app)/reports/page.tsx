@@ -1,10 +1,10 @@
-import Link from "next/link";
-import { BarChart3, Download } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 import { getCurrentUserId } from "@/lib/session";
 import { getReportRows, getJobWorkDateRange } from "@/lib/db/repositories/jobWorks";
 import { readReportView, GROUP_COLUMN, currentYear } from "@/lib/report-period";
 import { EmptyState } from "@/components/empty-state";
 import { ReportControls } from "./report-controls";
+import { ReportExportMenu } from "./report-export-menu";
 
 function inr(n: number) {
   return "₹" + n.toLocaleString("en-IN");
@@ -79,23 +79,11 @@ export default async function ReportsPage({
       <ReportControls view={view} years={years} />
 
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <div className="flex flex-wrap items-baseline gap-2.5">
-          <h2 className="text-[19px] font-bold leading-none tracking-[-0.02em]">{view.label}</h2>
-          <span className="text-[13px] text-muted-foreground">
-            {totals.count} job {totals.count === 1 ? "work" : "works"} · {totals.pieces.toLocaleString("en-IN")} pieces
-          </span>
-        </div>
+        <h2 className="text-[19px] font-bold leading-none tracking-[-0.02em]">{view.label}</h2>
 
-        {/* The export is handed the SAME query string this page read, so the
-            file cannot describe a different period from the one on screen. */}
-        <Link
-          href={`/api/export/report?${qs}`}
-          prefetch={false}
-          className="inline-flex h-9 items-center gap-1.5 rounded-[10px] border border-border bg-card px-3 text-[13px] font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <Download size={14} aria-hidden="true" />
-          Export
-        </Link>
+        {/* Excel or PDF, both handed the SAME query string this page read, so
+            neither can describe a different period from the one on screen. */}
+        <ReportExportMenu qs={qs} rowCount={rows.length} />
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">

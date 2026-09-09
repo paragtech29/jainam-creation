@@ -604,58 +604,24 @@ console.log("\n--- EXPORT ---");
     // With a pager, "of N" is the full count; without one, a single page IS
     // the full set.
     const expectedRows = screen.of || screen.rows;
-    check("an Export button is on the job work list", await page.isVisible('button:has-text("Export")'));
-
-    // The menu must be REACHABLE, which is not the same as present. This
-    // button sits in the footer of a shell that is overflow-hidden, and a
-    // hand-rolled panel opened downward off the bottom of the screen: at
-    // 1440x900 it ran from y=871 to y=1019 with the Excel row at y=906,
-    // entirely below the fold. Export looked broken because the only item
-    // that does the work could not be clicked. Radix's portalled, collision-
-    // aware content flips it above the button instead.
-    await page.click('button:has-text("Export")');
-    await page.waitForTimeout(450);
-    const menu = await page.evaluate(() => {
-      const inView = (el) => {
-        if (!el) return null;
-        const r = el.getBoundingClientRect();
-        return (
-          r.top >= 0 &&
-          r.bottom <= window.innerHeight &&
-          r.left >= 0 &&
-          r.right <= window.innerWidth
-        );
-      };
-      const link = (re) => [...document.querySelectorAll("a")].find((a) => re.test(a.textContent || ""));
-      const content = document.querySelector("[data-slot=dropdown-menu-content]");
+    // The footer holds ONLY the pager now. The view total and the export moved
+    // to Reports, where "how much" is the question being asked rather than a
+    // by-product of the current filter — the owner asked for both to go.
+    const footer = await page.evaluate(() => {
+      const t = document.body.innerText;
       return {
-        side: content?.getAttribute("data-side") ?? null,
-        excelInView: inView(link(/Excel/)),
-        pdfInView: inView(link(/PDF/)),
+        hasTotal: /Total this view/.test(t),
+        hasExportButton: [...document.querySelectorAll("button")].some((b) =>
+          /^\s*Export\s*$/.test(b.textContent || "")
+        ),
+        hasPager: /Showing \d+/.test(t) || /Page \d+ of \d+/.test(t),
       };
     });
     check(
-      "both export options are fully on screen when the menu opens",
-      menu.excelInView === true && menu.pdfInView === true,
-      JSON.stringify(menu)
+      "the job work footer is pagination only",
+      footer.hasTotal === false && footer.hasExportButton === false && footer.hasPager === true,
+      JSON.stringify(footer)
     );
-
-    // And the Excel item really produces a file on a plain click — not a
-    // forced one, which would prove nothing about whether it is clickable.
-    let downloaded = null;
-    try {
-      const [dl] = await Promise.all([
-        page.waitForEvent("download", { timeout: 15000 }),
-        page.locator('a:has-text("Excel")').click(),
-      ]);
-      downloaded = dl.suggestedFilename();
-    } catch {}
-    check(
-      "clicking Excel downloads a file",
-      Boolean(downloaded) && /\.xlsx$/.test(downloaded ?? ""),
-      String(downloaded)
-    );
-    await page.waitForTimeout(300);
 
     const res = await page.request.get(BASE + "/api/export/job-works");
     check("the Excel route returns a file", res.status() === 200, "status " + res.status());
@@ -2014,6 +1980,54 @@ console.log("\n--- REPORTS ---");
         file.dataRows === onScreen.rows.length,
       JSON.stringify(file)
     );
+    check(
+      "the report header carries no job-work/pieces line",
+      !/job works? · [\d,]+ pieces/.test(await page.evaluate(() => document.querySelector("main").innerText)),
+      "removed at the owner's request — the table states both already"
+    );
+
+    // Excel or PDF, the same choice the job work list used to offer.
+    await page.click('button:has-text("Export")');
+    await page.waitForTimeout(450);
+    const menu = await page.evaluate(() => {
+      const inView = (el) => {
+        const r = el.getBoundingClientRect();
+        return r.top >= 0 && r.bottom <= window.innerHeight;
+      };
+      const links = [...document.querySelectorAll("a")].filter((a) => /Excel|PDF/.test(a.textContent || ""));
+      return {
+        options: links.map((a) => a.textContent.trim().split("\n")[0]),
+        allInView: links.every(inView),
+      };
+    });
+    check(
+      "the report offers Excel and PDF, both reachable",
+      menu.options.length === 2 && menu.allInView === true,
+      JSON.stringify(menu)
+    );
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(300);
+
+    // The printed report must show the same figures as the screen — it is a
+    // second renderer of the same query, and the one that ends up on paper.
+    await page.goto(BASE + "/reports/print?period=year&groupBy=party", {
+      waitUntil: "domcontentloaded",
+    });
+    await page.waitForTimeout(1300);
+    const printed = await page.evaluate(() => {
+      const cells = [...document.querySelectorAll("tfoot td")].map((td) => td.textContent.trim());
+      return {
+        grand: cells[cells.length - 1] ?? null,
+        rows: document.querySelectorAll("tbody tr").length,
+        sub: document.querySelector("p")?.textContent?.trim() ?? "",
+      };
+    });
+    check(
+      "the PDF page shows the same total and rows as the screen",
+      money(printed.grand) === money(onScreen.grand) && printed.rows === onScreen.rows.length,
+      JSON.stringify({ printed, screen: { grand: onScreen.grand, rows: onScreen.rows.length } })
+    );
+
     check(
       "the file says which period and grouping it is",
       file !== null && /2026/.test(file.context) && /by party/i.test(file.context),

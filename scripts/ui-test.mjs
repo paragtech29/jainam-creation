@@ -1516,6 +1516,94 @@ console.log("\n--- DIALOG CANCEL AND DIRTY-GATING ---");
 // unless it sits inside a scroll region. A short screen is where that shows up
 // first, so check one. This caught the job work empty state being cut off at
 // the bottom with no way to scroll down to it.
+console.log("\n--- STATUS AND BILL FROM THE LIST ---");
+{
+  // The owner asked to change these without opening the record. Two rules
+  // ride on it: billed requires Completed, and leaving Completed must clear
+  // billed — otherwise the list can produce a Pending-and-Billed row, which
+  // the form cannot, and the dashboard's "to invoice" figure would misread it.
+  //
+  // This acts on whatever the FIRST row is, so it restores the value it found
+  // before finishing. The database holds the owner's real work.
+  await page.goto(BASE + "/job-work", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1200);
+
+  const rowCount = await page.evaluate(() => document.querySelectorAll("tbody tr").length);
+  if (rowCount === 0) {
+    skip("status from the list", "no job works to act on");
+  } else {
+    const read = () =>
+      page.evaluate(() => {
+        const row = document.querySelector("tbody tr");
+        return {
+          combos: [...row.querySelectorAll("[role=combobox]")].map((c) => c.textContent.trim()),
+          locked: Boolean(row.querySelector("span[title*='Completed']")),
+          heads: [...document.querySelectorAll("thead th")].map((t) => t.textContent.trim()),
+        };
+      });
+
+    const pick = async (which, label) => {
+      await page.locator("tbody tr [role=combobox]").nth(which).click();
+      await page.waitForTimeout(350);
+      await page.locator('[role="option"]', { hasText: new RegExp("^" + label + "$") }).first().click();
+      await page.waitForTimeout(1500);
+    };
+
+    const start = await read();
+    check(
+      "the list column reads Chalan, and Design is gone from it",
+      start.heads.includes("Chalan") && !start.heads.some((h) => /Design/i.test(h)),
+      JSON.stringify(start.heads)
+    );
+    check(
+      "status is a dropdown in the row, not a badge",
+      start.combos.length >= 1,
+      JSON.stringify(start.combos)
+    );
+
+    await pick(0, "Completed");
+    const completed = await read();
+    check(
+      "marking Completed reveals the bill dropdown",
+      completed.combos.length === 2 && completed.locked === false,
+      JSON.stringify(completed)
+    );
+
+    await pick(1, "Billed");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(1400);
+    const billed = await read();
+    check(
+      "Billed survives a reload — it reached the database",
+      billed.combos[1] === "Billed",
+      JSON.stringify(billed.combos)
+    );
+
+    // The invariant: away from Completed cannot stay Billed.
+    await pick(0, "Pending");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(1400);
+    const back = await read();
+    check(
+      "leaving Completed clears Billed, and the bill control locks",
+      back.combos.length === 1 && back.locked === true,
+      JSON.stringify(back)
+    );
+
+    // Put the row back the way it was found.
+    if (start.combos[0] !== "Pending") {
+      await pick(0, start.combos[0]);
+      if (start.combos[1] === "Billed") await pick(1, "Billed");
+    }
+    const restored = await read();
+    check(
+      "the row is restored to the value it started with",
+      restored.combos[0] === start.combos[0],
+      `started=${start.combos.join("/")} now=${restored.combos.join("/")}`
+    );
+  }
+}
+
 console.log("\n--- ADD A WORK TYPE INLINE ---");
 {
   // Creating a type from inside the row is the ONLY way to fill the first

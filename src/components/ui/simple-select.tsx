@@ -9,7 +9,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export type SelectOption = { value: string; label: string };
+export type SelectOption = {
+  value: string;
+  label: string;
+  /**
+   * Optional colour dot before the label, e.g. `bg-status-pending`. The four
+   * job work status hues were defined so those states are tellable apart at a
+   * glance; wherever a status is chosen, it should carry its colour.
+   */
+  dot?: string;
+};
 
 /**
  * The one dropdown for the whole app.
@@ -63,7 +72,14 @@ export function SimpleSelect({
       <SelectContent>
         {options.map((o) => (
           <SelectItem key={o.value} value={o.value}>
-            {o.label}
+            {o.dot ? (
+              <span className="flex items-center gap-2">
+                <span className={cn("size-2 shrink-0 rounded-full", o.dot)} aria-hidden="true" />
+                {o.label}
+              </span>
+            ) : (
+              o.label
+            )}
           </SelectItem>
         ))}
       </SelectContent>

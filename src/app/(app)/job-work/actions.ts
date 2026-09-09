@@ -11,6 +11,7 @@ import {
   updateJobWork,
   deleteJobWork,
   getJobWorkById,
+  setJobWorkProgress,
 } from "@/lib/db/repositories/jobWorks";
 import {
   createDescriptionType,
@@ -301,4 +302,56 @@ export async function createDescriptionTypeInlineAction(
     }
     return { error: "Could not create description type. Please try again." };
   }
+}
+
+export type JobWorkProgress = { status: "PENDING" | "IN_PROGRESS" | "COMPLETED"; isBilled: boolean };
+
+/**
+ * Change a job work's status and/or bill status from the LIST, without
+ * opening it.
+ *
+ * The two rules live here, in one place, because the list is now a second
+ * doorway to them and the form's disabled switch is only a hint:
+ *
+ * 1. Billed requires COMPLETED. The form expresses this by disabling the
+ *    switch; a request that arrives anyway is refused, not coerced.
+ * 2. Moving a status AWAY from Completed clears Billed. Otherwise the list
+ *    could leave a row that is Pending and Billed at once — a state the form
+ *    cannot produce and the dashboard's "to invoice" figure would misread.
+ *    Silently un-billing would be worse than refusing, so it is reported.
+ *
+ * It writes through setJobWorkProgress, NOT updateJobWork: the latter deletes
+ * and reinserts every description line, which would wipe the work breakdown of
+ * any row whose status was flipped from the list.
+ */
+export async function setJobWorkProgressAction(
+  jobWorkId: string,
+  next: Partial<JobWorkProgress>
+): Promise<{ ok: true; progress: JobWorkProgress } | { error: string }> {
+  const userId = await getCurrentUserId();
+
+  const current = await getJobWorkById(userId, jobWorkId);
+  if (!current) return { error: "That job work no longer exists. Refresh the list." };
+
+  const status = next.status ?? current.status;
+  let isBilled = next.isBilled ?? current.isBilled;
+
+  if (isBilled && status !== "COMPLETED") {
+    // Asking to bill something unfinished is a refusal. Asking to un-complete
+    // something already billed just un-bills it, and says so.
+    if (next.isBilled === true) {
+      return { error: "A job work can only be marked Billed once its status is Completed." };
+    }
+    isBilled = false;
+  }
+
+  const row = await setJobWorkProgress(userId, jobWorkId, { status, isBilled });
+  if (!row) return { error: "Could not update that job work. Refresh the list." };
+
+  revalidatePath("/job-work");
+  revalidatePath(`/job-work/${jobWorkId}`);
+  // The dashboard's month figures are status-derived, so they are stale now.
+  revalidatePath("/dashboard");
+
+  return { ok: true, progress: { status: row.status, isBilled: row.isBilled } };
 }

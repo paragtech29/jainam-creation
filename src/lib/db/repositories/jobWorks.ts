@@ -8,6 +8,7 @@ import { deleteImage } from "@/lib/db/repositories/images";
 import {
   jobWorks,
   jobWorkDescriptions,
+  jobWorkStatusEnum,
   descriptionTypes,
   parties,
   silaiKarigars,
@@ -426,4 +427,22 @@ export async function listJobWorksPage(
   ]);
 
   return { rows, total: count, grandTotal: sum };
+}
+
+// A NARROW update for the two fields the list can change inline: status and
+// isBilled. Deliberately not `updateJobWork`, which deletes and reinserts
+// every description line — using that here would destroy the work breakdown
+// of any row whose status was flipped from the list, and the caller has no
+// business knowing the lines to pass them back.
+export async function setJobWorkProgress(
+  userId: string,
+  id: string,
+  data: { status: (typeof jobWorkStatusEnum.enumValues)[number]; isBilled: boolean }
+): Promise<JobWork | null> {
+  const [row] = await db
+    .update(jobWorks)
+    .set({ ...data, updatedAt: new Date() })
+    .where(and(eq(jobWorks.id, id), eq(jobWorks.userId, userId)))
+    .returning();
+  return row ?? null;
 }

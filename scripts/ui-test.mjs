@@ -1401,7 +1401,7 @@ console.log("\n--- DASHBOARD ---");
         year: combos[1]?.textContent.trim() ?? null,
         search: location.search,
         noteCount: Number((t.match(/(\d+) job works? this month/) || [])[1] ?? -1),
-        recentRows: panel ? panel.querySelectorAll("a[href^='/job-work/']").length : -1,
+        recentRows: panel ? [...panel.querySelectorAll("a[href^='/job-work/']")].filter((a) => a.getAttribute("href") !== "/job-work/new").length : -1,
       };
     });
   const choose = async (which, label) => {
@@ -1412,23 +1412,44 @@ console.log("\n--- DASHBOARD ---");
   };
 
   const startYear = (await picker()).year;
-  const olderYear = String(Number(startYear) - 1);
-  await choose(1, olderYear);
-  await choose(0, "January");
-  const jumped = await picker();
-  check(
-    "any month of any year is two clicks away",
-    jumped.month === "January" && jumped.year === olderYear && jumped.search.includes(`month=${olderYear}-01`),
-    JSON.stringify(jumped)
-  );
+
+  // The year list only offers years the register actually has, so on a fresh
+  // account there is exactly one. Asking for last year then would hang on an
+  // option that was never going to appear — which is precisely how this check
+  // failed the moment the app was cleared for handover. A brand-new register
+  // is the state the owner's brother starts in, so it has to be a clean SKIP
+  // rather than a red.
+  await page.locator("main [role=combobox]").nth(1).click();
+  await page.waitForTimeout(400);
+  const yearsOffered = await page.locator('[role="option"]').allTextContents();
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+
+  if (yearsOffered.length < 2) {
+    skip("jumping to another year", `only ${yearsOffered.join(", ") || "one year"} in the register`);
+  } else {
+    const olderYear = yearsOffered.find((y) => y !== startYear) ?? startYear;
+    await choose(1, olderYear);
+    await choose(0, "January");
+    const jumped = await picker();
+    check(
+      "any month of any year is two clicks away",
+      jumped.month === "January" && jumped.year === olderYear && jumped.search.includes(`month=${olderYear}-01`),
+      JSON.stringify(jumped)
+    );
+  }
 
   // Recent job work must follow the month, like every other figure here. It
   // did not until the month became easy to change, and then a January 2025
   // screen was showing September 2026 rows beside January 2025 tiles.
+  //
+  // Read fresh rather than reusing the jump above: on a one-year register
+  // there was no jump, and the rule still has to hold for the month on screen.
+  const shown = await picker();
   check(
     "the recent list belongs to the month being viewed",
-    jumped.noteCount >= 0 && jumped.recentRows === Math.min(jumped.noteCount, 5),
-    JSON.stringify({ monthCount: jumped.noteCount, recentRows: jumped.recentRows })
+    shown.noteCount >= 0 && shown.recentRows === Math.min(shown.noteCount, 5),
+    JSON.stringify({ monthCount: shown.noteCount, recentRows: shown.recentRows })
   );
 
   // The future is not offered: an option leading to a guaranteed empty screen
@@ -1480,7 +1501,7 @@ console.log("\n--- DASHBOARD ---");
       /Recent job work/.test(s.textContent || "")
     );
     return {
-      rows: panel ? panel.querySelectorAll("a[href^='/job-work/']").length : null,
+      rows: panel ? [...panel.querySelectorAll("a[href^='/job-work/']")].filter((a) => a.getAttribute("href") !== "/job-work/new").length : null,
       hasViewAll: Boolean(
         [...(panel?.querySelectorAll("a") ?? [])].find((a) => /View all/.test(a.textContent || ""))
       ),
@@ -1502,35 +1523,54 @@ console.log("\n--- DASHBOARD ---");
     );
   }
 
+  // The strip is always there; its figure is only above zero once there is
+  // work. An empty register is a legitimate state, not a failure.
   check(
     "the dashboard carries a year strip linking to the year report",
-    now.yearHref !== null && /period=year/.test(now.yearHref) && money(now.yearTotal) > 0,
+    now.yearHref !== null && /period=year/.test(now.yearHref),
     JSON.stringify({ href: now.yearHref, total: now.yearTotal })
   );
 
-  // Step back one month and the comparison must move with it.
-  await page.click('button[aria-label="Previous month"]');
-  await page.waitForTimeout(1200);
-  const stepped = await glance();
-  const heading = await page.evaluate(() => document.querySelector("main h2")?.textContent?.trim());
-  check(
-    "the comparison follows the month being viewed",
-    stepped.comparedWith !== null &&
-      stepped.comparedWith !== now.comparedWith &&
-      stepped.comparedWith !== heading,
-    JSON.stringify({ heading, comparedWith: stepped.comparedWith, was: now.comparedWith })
-  );
+  // Step back one month and the comparison must move with it — but only if
+  // there IS an earlier month. On a fresh register the arrow is disabled,
+  // because there is nothing behind today.
+  const backArrow = page.locator('button[aria-label="Previous month"]');
+  if (await backArrow.isDisabled()) {
+    skip("the month comparison", "no earlier month in the register");
+  } else {
+    await backArrow.click();
+    await page.waitForTimeout(1200);
+    const stepped = await glance();
+    const heading = await page.evaluate(() =>
+      document.querySelector("main h2")?.textContent?.trim()
+    );
 
-  // The percentage must be arithmetic, not decoration: compare the two months'
-  // Earned figures directly.
-  const earnedNow = money(now.earned);
-  const earnedPrev = money(stepped.earned);
-  const expected = earnedPrev > 0 ? Math.round(((earnedNow - earnedPrev) / earnedPrev) * 100) : null;
-  check(
-    "the percentage matches the two months it compares",
-    expected === null || now.percent === Math.abs(expected),
-    `shown=${now.direction}${now.percent}% computed=${expected}% (${now.earned} vs ${stepped.earned})`
-  );
+    if (now.comparedWith === null && stepped.comparedWith === null) {
+      // Both months empty: a percentage needs something to divide by, and its
+      // ABSENCE is the behaviour asserted elsewhere.
+      skip("the month comparison", "neither month has work to compare");
+    } else {
+      check(
+        "the comparison follows the month being viewed",
+        stepped.comparedWith !== null &&
+          stepped.comparedWith !== now.comparedWith &&
+          stepped.comparedWith !== heading,
+        JSON.stringify({ heading, comparedWith: stepped.comparedWith, was: now.comparedWith })
+      );
+
+      // The percentage must be arithmetic, not decoration: compare the two
+      // months' Earned figures directly.
+      const earnedNow = money(now.earned);
+      const earnedPrev = money(stepped.earned);
+      const expected =
+        earnedPrev > 0 ? Math.round(((earnedNow - earnedPrev) / earnedPrev) * 100) : null;
+      check(
+        "the percentage matches the two months it compares",
+        expected === null || now.percent === Math.abs(expected),
+        `shown=${now.direction}${now.percent}% computed=${expected}% (${now.earned} vs ${stepped.earned})`
+      );
+    }
+  }
 
   await page.goto(BASE + "/dashboard", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(900);
@@ -1550,7 +1590,7 @@ console.log("\n--- DASHBOARD ---");
     "the month is named once, by the picker, with no heading repeating it",
     monthLabels.length === 0 &&
       /^[A-Z][a-z]+$/.test(named.monthSelect ?? "") &&
-      /^d{4}$/.test(named.yearSelect ?? ""),
+      /^\d{4}$/.test(named.yearSelect ?? ""),
     JSON.stringify({ duplicateLabels: monthLabels, ...named })
   );
   check(

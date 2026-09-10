@@ -1514,10 +1514,23 @@ console.log("\n--- DASHBOARD ---");
   await page.goto(BASE + "/dashboard", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(900);
 
+  // The month is named by the PICKER now, not by a heading — the selects
+  // carry it since task 35, and a heading beside them would be the same
+  // duplication the owner objected to when the picker held a second copy of
+  // the label. So what must hold is that NOTHING spells out "September 2026"
+  // as a label of its own, while the picker still says which month it is.
+  const named = await page.evaluate(() => {
+    const combos = [...document.querySelectorAll("main [role=combobox]")].map((c) =>
+      c.textContent.trim()
+    );
+    return { monthSelect: combos[0] ?? null, yearSelect: combos[1] ?? null };
+  });
   check(
-    "the month is named exactly once, as the page heading",
-    monthLabels.length === 1 && monthLabels[0].includes("text-[21px]"),
-    JSON.stringify(monthLabels)
+    "the month is named once, by the picker, with no heading repeating it",
+    monthLabels.length === 0 &&
+      /^[A-Z][a-z]+$/.test(named.monthSelect ?? "") &&
+      /^d{4}$/.test(named.yearSelect ?? ""),
+    JSON.stringify({ duplicateLabels: monthLabels, ...named })
   );
   check(
     "no redundant 'for this month' subtitle",

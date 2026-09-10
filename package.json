@@ -19,8 +19,8 @@
     "reset:data": "tsx --env-file=.env.local scripts/reset-data.ts",
     "verify:validation": "tsx --env-file=.env.local scripts/verify-validation.ts",
     "seed:bulk": "tsx --env-file=.env.local scripts/seed-bulk.ts",
-    "ui:test": "node scripts/ui-test.mjs test",
-    "ui:shots": "node scripts/ui-test.mjs shots",
+    "ui:test": "node --env-file-if-exists=.env.local scripts/ui-test.mjs test",
+    "ui:shots": "node --env-file-if-exists=.env.local scripts/ui-test.mjs shots",
     "tidy:test": "tsx --env-file=.env.local scripts/tidy-test-rows.ts",
     "ui:e2e": "node scripts/ui-e2e.mjs"
   },

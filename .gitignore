@@ -45,3 +45,8 @@ next-env.d.ts
 
 # Screenshots from npm run ui:shots — local verification only.
 ui-shots/
+
+# Backups of .env.local do NOT match ".env*.local" above — that pattern needs
+# the name to END in .local. A file like .env.local.backup-20260910 holds the
+# same database URL and auth secret, so it must be named here explicitly.
+.env.local.backup-*

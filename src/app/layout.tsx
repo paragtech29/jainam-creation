@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Instrument_Sans, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -23,6 +23,19 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Jainam Creation",
   description: "Job work register for Jainam Creation",
+  // iOS ignores the web manifest entirely: it needs these to open the app
+  // full screen from the home screen and to label the icon.
+  appleWebApp: {
+    capable: true,
+    title: "Jainam",
+    statusBarStyle: "default",
+  },
+};
+
+export const viewport: Viewport = {
+  // Tints the phone's status bar to match the page header. Same value as the
+  // manifest's theme_color — they describe the same surface.
+  themeColor: "#F3F6F5",
 };
 
 export default function RootLayout({

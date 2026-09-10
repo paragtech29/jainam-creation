@@ -12,6 +12,7 @@
     "db:smoke": "tsx --env-file=.env.local scripts/db-smoke-test.ts",
     "user:create": "tsx --env-file=.env.local scripts/create-user.ts",
     "user:reset-password": "tsx --env-file=.env.local scripts/reset-password.ts",
+    "user:delete": "tsx --env-file=.env.local scripts/delete-user.ts",
     "seed:masters": "tsx --env-file=.env.local scripts/seed-masters.ts",
     "seed:demo": "tsx --env-file=.env.local scripts/seed-demo-job-works.ts",
     "verify:money": "tsx --env-file=.env.local scripts/verify-job-work-money.ts",

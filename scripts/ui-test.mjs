@@ -187,7 +187,28 @@ async function login(page) {
     .waitForURL((u) => !u.pathname.includes("/login"), { timeout: 30000 })
     .catch(() => {});
   await page.waitForTimeout(300);
-  return !page.url().includes("/login");
+  const ok = !page.url().includes("/login");
+  if (!ok) {
+    // Say WHY rather than letting every later check time out on a selector
+    // that was never going to appear. The test account was deleted when the
+    // app was handed over, so this is the expected failure on a fresh
+    // machine, not a mystery.
+    console.error(
+      [
+        "",
+        `Could not sign in as "${USER}".`,
+        "",
+        "ui:test needs an account of its own. It CREATES and DELETES rows as it",
+        "runs (parties, karigars and work types named \"ZZ Test …\"), so pointing",
+        "it at the real account would write test data into live records.",
+        "",
+        "  npm run user:create -- uitest <a password>",
+        "  set UI_USER=uitest & set UI_PASS=<that password> & npm run ui:test",
+        "",
+      ].join("\n")
+    );
+  }
+  return ok;
 }
 
 const browser = await chromium.launch({ headless: true });

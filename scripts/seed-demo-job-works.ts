@@ -56,6 +56,13 @@ import { computeTotal } from "../src/lib/validation/job-work";
 
 const WIPE = process.argv.includes("--wipe");
 
+// The account to seed. This was hardcoded to "testowner", which stopped
+// existing at handover — the script would have failed with a confusing
+// message rather than doing anything. Pass a username, or let it default to
+// the local development account.
+const SEED_USER =
+  process.argv.slice(2).find((a) => !a.startsWith("--")) ?? "devowner";
+
 // ── what gets created ────────────────────────────────────────────────────
 const PARTIES = [
   { name: "Shreeji Creation", ownerName1: "Nilesh bhai", ownerName2: "Kalpesh bhai", contact1: "98250 41120", gender: "male", address: "Ring Road, Surat" },
@@ -118,11 +125,30 @@ function iso(y: number, m: number, d: number) {
 }
 
 async function main() {
-  const user = await getUserByUsername("testowner");
-  if (!user) {
-    console.error('No "testowner" account.');
+  // HARD STOP on the live database. This script creates and (with --wipe)
+  // deletes in bulk, and the owner's brother is entering real job works into
+  // "neondb". Local work belongs in its own database — see docs/DEPLOY.md.
+  const dbName = new URL(process.env.DATABASE_URL!).pathname.replace(/^\//, "");
+  if (dbName === "neondb") {
+    console.error(
+      `REFUSING to seed "${dbName}" — that is the live database the owner uses.\n` +
+        `Point DATABASE_URL at a local database first (see docs/DEPLOY.md).`
+    );
+    process.exitCode = 1;
     return;
   }
+
+  const user = await getUserByUsername(SEED_USER);
+  if (!user) {
+    console.error(
+      `No "${SEED_USER}" account in "${dbName}".\n` +
+        `Create it with:  npm run user:create -- ${SEED_USER} <password>\n` +
+        `Or name a different account:  npm run seed:demo -- <username>`
+    );
+    process.exitCode = 1;
+    return;
+  }
+  console.log(`Seeding "${SEED_USER}" in database "${dbName}".`);
   const userId = user.id;
 
   const partyNames = new Set(PARTIES.map((p) => p.name));

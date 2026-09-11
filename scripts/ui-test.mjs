@@ -239,7 +239,15 @@ if (MODE === "shots") {
 // acceptDownloads explicitly: the export check asserts that clicking Excel
 // produces a FILE, and a check that fails because downloads were disabled
 // would be blaming the app for the harness.
-const ctx = await browser.newContext({ viewport: VIEWPORTS.laptop, acceptDownloads: true });
+// clipboard-read is needed to prove the "Copy all types" button actually put
+// something on the clipboard rather than just flashing a tick. Without the
+// grant, navigator.clipboard.readText() rejects and the check would fail for
+// a reason that has nothing to do with the button.
+const ctx = await browser.newContext({
+  viewport: VIEWPORTS.laptop,
+  acceptDownloads: true,
+  permissions: ["clipboard-read", "clipboard-write"],
+});
 const page = await ctx.newPage();
 const jsErrors = [];
 page.on("pageerror", (e) => jsErrors.push(String(e.message).slice(0, 140)));
@@ -633,6 +641,136 @@ check("job work names the party, the karigar and the description rows",
   e.join(" | "));
 check("no raw zod message reaches the owner",
   !e.some((x) => /invalid input|expected string|received undefined/i.test(x)), e.join(" | "));
+
+// ─────────── what a rejected save must NOT throw away ───────────
+// Reported by the owner's brother while using the app for real: fill the
+// form, hit Save, get an error, fix it, hit Save again — and Party and Silai
+// Karigar had emptied themselves, so he had to pick both again before every
+// retry. React 19 resets the <form> once the action returns, INCLUDING when
+// it returns errors; that reset reverts Radix's hidden native <select> to its
+// initial empty option, which arrives in the handler as onValueChange("").
+// Status did not clear, because it starts on "Pending" and resetting it
+// changes nothing — that asymmetry is what identified the cause.
+{
+  await page.goto(BASE + "/job-work/new", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1300);
+
+  const shown = () =>
+    page.evaluate(() =>
+      Object.fromEntries(
+        [...document.querySelectorAll("main [role=combobox]")]
+          .filter((el) => el.id)
+          .map((el) => [el.id, el.textContent.trim().slice(0, 30)])
+      )
+    );
+
+  const pickFirst = async (id) => {
+    await page.locator("#" + id).click();
+    await page.waitForTimeout(400);
+    const n = await page.locator('[role="option"]').count();
+    if (n === 0) {
+      await page.keyboard.press("Escape");
+      return false;
+    }
+    await page.locator('[role="option"]').first().click();
+    await page.waitForTimeout(500);
+    return true;
+  };
+
+  if (!(await pickFirst("partyId"))) {
+    skip("a rejected save keeps the party and karigar", "no parties in the register");
+  } else if (!(await pickFirst("karigarId"))) {
+    skip("a rejected save keeps the party and karigar", "no karigar linked to that party");
+  } else {
+    const chose = await shown();
+    // Leave pieces empty so the server rejects it.
+    await page.fill('input[name="pieces"]', "");
+    await saveJob();
+    await page.waitForTimeout(2200);
+    const kept = await shown();
+
+    check(
+      "a rejected save keeps the party already chosen",
+      kept.partyId === chose.partyId && !/Select a party/i.test(kept.partyId || ""),
+      JSON.stringify({ chose: chose.partyId, kept: kept.partyId })
+    );
+    check(
+      "a rejected save keeps the silai karigar already chosen",
+      kept.karigarId === chose.karigarId && !/Choose a party/i.test(kept.karigarId || ""),
+      JSON.stringify({ chose: chose.karigarId, kept: kept.karigarId })
+    );
+    check(
+      "the save really was rejected, so the two checks above mean something",
+      (await errs()).length > 0
+    );
+  }
+}
+
+// ─────────── design numbers are codes, not numbers ───────────
+// His real books use "A-1170" and "D 42/B". The inputs carried
+// pattern="[0-9]*" and the schema a digits-only rule, so the work in front
+// of him simply could not be recorded. Both columns were always TEXT.
+{
+  const attrs = await page.evaluate(() =>
+    ["partyDesignNo", "computerDesignNo"].map((n) => {
+      const el = document.querySelector(`input[name="${n}"]`);
+      return { n, pattern: el?.getAttribute("pattern"), mode: el?.getAttribute("inputmode") };
+    })
+  );
+  check(
+    "the design-number inputs do not restrict themselves to digits",
+    attrs.every((a) => !a.pattern && !a.mode),
+    JSON.stringify(attrs)
+  );
+
+  await page.fill('input[name="partyDesignNo"]', "A-1170/B");
+  check(
+    "a design number with letters can actually be typed",
+    (await page.inputValue('input[name="partyDesignNo"]')) === "A-1170/B"
+  );
+}
+
+// ─────────── the work types have to be gettable ───────────
+// They live inside dropdown triggers, so a cursor cannot select the text.
+// He wanted to paste them into Comments and could not reach them at all.
+{
+  const combo = page.locator("main [role=combobox]").filter({ hasText: /choose work/i }).first();
+  if ((await combo.count()) === 0) {
+    skip("copying the chosen work types", "no empty description row on screen");
+  } else {
+    await combo.click();
+    await page.waitForTimeout(400);
+    const opts = page.locator('[role="option"]').filter({ hasNotText: /add new/i });
+    if ((await opts.count()) === 0) {
+      await page.keyboard.press("Escape");
+      skip("copying the chosen work types", "no work types exist yet");
+    } else {
+      const name = (await opts.first().textContent()).trim();
+      await opts.first().click();
+      await page.waitForTimeout(500);
+
+      const copyAll = page.locator('button:has-text("Copy all")');
+      check("a copy control appears once a work type is chosen", await copyAll.isVisible());
+
+      await copyAll.click();
+      await page.waitForTimeout(500);
+      // Clipboard permissions are granted on the context; localhost is a
+      // secure origin so the real API is exercised here.
+      const clip = await page
+        .evaluate(() => navigator.clipboard.readText())
+        .catch(() => null);
+      check(
+        "it puts the chosen work type on the clipboard",
+        clip === name,
+        JSON.stringify({ clip, expected: name })
+      );
+      check(
+        "the button says it worked",
+        await page.locator('button:has-text("Copied")').isVisible().catch(() => false)
+      );
+    }
+  }
+}
 
 // ─────────── the dialogs: cancel, and save only when changed ───────────
 // Two things the owner found: Cancel did nothing (it was a link to the page
@@ -1914,10 +2052,14 @@ console.log("\n--- ADD A WORK TYPE INLINE ---");
 
   const rowValue = () =>
     page.evaluate(() => {
+      // Find the trigger through the hidden native <select> Radix renders
+      // beside it, NOT through a Tailwind class. This used to match on
+      // `grid-cols-[1fr_150px_44px]`, and adding a copy button to the row
+      // changed that class — so the check went red reporting `shows: null`
+      // while the behaviour it was testing was perfectly fine. A check
+      // pinned to a layout class fails every time the layout is touched.
       const sel = document.querySelector('select[name="descriptionTypeId"]');
-      const trigger = [...document.querySelectorAll('[role="combobox"]')].find((c) =>
-        c.closest('[class*="grid-cols-[1fr_150px_44px]"]')
-      );
+      const trigger = sel?.parentElement?.querySelector('[role="combobox"]');
       return { value: sel ? sel.value : null, shows: trigger?.textContent?.trim() ?? null };
     });
 

@@ -17,8 +17,18 @@ import { requiredChoice } from "./common";
 // hidden-input mirror next to any <Select name="...">.
 
 export const digitsOnly = z.string().trim().regex(/^[0-9]*$/, "Digits only");
-// used for chalanNo, partyDesignNo, computerDesignNo. Empty string is VALID
-// (all three are optional). These stay TEXT columns in the DB.
+// used for chalanNo only. Empty string is VALID (it is optional), and the
+// column is TEXT in the DB.
+
+// Design numbers are FREE TEXT, not digits. The owner's real books use codes
+// like "A-1170" and "D 42/B", and the digits-only rule simply rejected them —
+// he could not record the work in front of him. Both columns were already
+// TEXT, so nothing had to migrate. Length is capped to match the input and
+// keep an accidental paste of a whole paragraph out of the column.
+export const designNo = z
+  .string()
+  .trim()
+  .max(40, "Keep it under 40 characters");
 
 export const descriptionLineSchema = z.object({
   descriptionTypeId: z.string().min(1, "Choose a type"),
@@ -44,8 +54,8 @@ export const jobWorkSchema = z.object({
     .min(1, "Please enter a rate")
     .pipe(z.coerce.number<string>().int("Whole rupees only").positive("Rate must be more than 0")),
   chalanNo: digitsOnly.optional().or(z.literal("")),
-  partyDesignNo: digitsOnly.optional().or(z.literal("")),
-  computerDesignNo: digitsOnly.optional().or(z.literal("")),
+  partyDesignNo: designNo.optional().or(z.literal("")),
+  computerDesignNo: designNo.optional().or(z.literal("")),
   comment: z.string().trim().optional().or(z.literal("")),
   status: z.enum(["PENDING", "IN_PROGRESS", "COMPLETED"]),
   isBilled: z.coerce.boolean().optional(),

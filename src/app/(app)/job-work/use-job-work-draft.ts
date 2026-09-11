@@ -22,7 +22,22 @@
 // and `jobwork-draft-edit-{id}` for an edit of a specific job work — two
 // different job works being edited in the same tab (e.g. via back/forward)
 // must never share, or clobber, each other's draft.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+
+// True only once hydration is done. useSyncExternalStore is the hydration-
+// safe way to ask this: React uses the server snapshot (false) for the
+// hydration render, so the markup matches, then re-renders with the client
+// snapshot (true). A plain `useState(false)` + `useEffect(() => setTrue())`
+// would do the same job but is a setState inside an effect, which this
+// codebase rejects outright.
+const NEVER_CHANGES = () => () => {};
+function useHydrated(): boolean {
+  return useSyncExternalStore(
+    NEVER_CHANGES,
+    () => true,
+    () => false
+  );
+}
 
 export type JobWorkDraft = {
   date: string;
@@ -48,20 +63,50 @@ export function useJobWorkDraft(
   setDraft: React.Dispatch<React.SetStateAction<JobWorkDraft>>;
   clearDraft: () => void;
 } {
-  const [draft, setDraft] = useState<JobWorkDraft>(() => {
-    if (typeof window === "undefined") return initial;
+  // The saved draft is read AFTER mount, never in this initialiser.
+  //
+  // Reading sessionStorage here used to seem obvious — restore the draft
+  // before the first paint and there is no flicker. But the server has no
+  // sessionStorage, so it renders the blank form while the browser renders
+  // the filled one, and React reports "Hydration failed because the server
+  // rendered HTML didn't match the client" and THROWS AWAY the server markup
+  // to re-render the whole form on the client. It fired on exactly the
+  // journey this hook exists for: leave a half-filled form, come back to it.
+  // Starting from `initial` makes the first client render match the server;
+  // the restore just below then fills it in.
+  const [draft, setDraft] = useState<JobWorkDraft>(initial);
+
+  // Which key's draft has already been restored. State rather than a ref
+  // because this is read during render, and it doubles as the guard for the
+  // write-back below: nothing may be saved until the restore has had its
+  // turn, or the blank first render would overwrite the very draft being
+  // restored. Keying it also means a different job work restores its own
+  // draft rather than keeping the previous one's.
+  const [restoredFor, setRestoredFor] = useState<string | null>(null);
+  const hydrated = useHydrated();
+  const restored = restoredFor === key;
+
+  // Adjusted during render, not in an effect: the update is queued before
+  // this render commits, so the restored draft paints in the same frame
+  // rather than as a visible second pass.
+  if (hydrated && !restored) {
+    setRestoredFor(key);
     try {
       const saved = sessionStorage.getItem(key);
-      // A corrupt or half-written draft must degrade to the blank form, never
-      // crash the screen — hence the try/catch around JSON.parse.
-      return saved ? { ...initial, ...JSON.parse(saved) } : initial;
+      // A corrupt or half-written draft must degrade to the blank form,
+      // never crash the screen — hence the try/catch around JSON.parse.
+      if (saved) {
+        const parsed = JSON.parse(saved) as Partial<JobWorkDraft>;
+        setDraft((d) => ({ ...d, ...parsed }));
+      }
     } catch {
-      return initial;
+      // Leave the blank form standing.
     }
-  });
+  }
 
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
+    if (!restored) return;
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       sessionStorage.setItem(key, JSON.stringify(draft));
@@ -69,7 +114,7 @@ export function useJobWorkDraft(
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [draft, key]);
+  }, [draft, key, restored]);
 
   function clearDraft() {
     sessionStorage.removeItem(key);

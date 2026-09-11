@@ -293,13 +293,25 @@ export function JobWorkForm({
             <Select
               name="partyId"
               value={draft.partyId}
-              onValueChange={(v) =>
+              onValueChange={(v) => {
+                // An EMPTY value is never a real choice — there is no blank
+                // option in this list. React 19 resets the <form> once the
+                // action returns, INCLUDING when it returns errors; that
+                // reset reverts Radix's hidden native <select> to its initial
+                // (empty) option, which fires a change, which arrives here as
+                // onValueChange(""). The owner's brother saw both Party and
+                // Silai Karigar clear themselves every time a save was
+                // rejected, and had to pick them again before each retry.
+                // Status did NOT clear, which is the proof: it starts on
+                // "Pending", so resetting it changes nothing and fires no
+                // event. Same guard, same reason, as in DescriptionRows.
+                if (!v) return;
                 // Changing the party invalidates any previously-selected
                 // karigar — a karigar linked to Mayra is not valid for
                 // Jignesh bhai, so leaving the old selection would post a
                 // link that does not exist.
-                setDraft((d) => ({ ...d, partyId: v, karigarId: "" }))
-              }
+                setDraft((d) => ({ ...d, partyId: v, karigarId: "" }));
+              }}
             >
               <SelectTrigger id="partyId" className="h-[42px] w-full">
                 <SelectValue placeholder="Select a party" />
@@ -370,7 +382,13 @@ export function JobWorkForm({
               <Select
                 name="karigarId"
                 value={draft.karigarId}
-                onValueChange={(v) => setDraft((d) => ({ ...d, karigarId: v }))}
+                onValueChange={(v) => {
+                  // See the Party select above: the post-action form reset
+                  // arrives here as an empty value and would clear the
+                  // karigar the owner already picked.
+                  if (!v) return;
+                  setDraft((d) => ({ ...d, karigarId: v }));
+                }}
                 required
               >
                 <SelectTrigger id="karigarId" className="h-[42px] w-full">
@@ -415,11 +433,11 @@ export function JobWorkForm({
             <Input
               id="partyDesignNo"
               name="partyDesignNo"
-              placeholder="7170"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={20}
-              title="Numbers only"
+              // Letters, digits, dashes, slashes — whatever the party writes
+              // on the chalan. Real design numbers look like "A-1170", and
+              // the old numeric-only input silently refused to accept them.
+              placeholder="A-1170"
+              maxLength={40}
               value={draft.partyDesignNo}
               onChange={(e) => setDraft((d) => ({ ...d, partyDesignNo: e.target.value }))}
               className="h-[42px] font-mono tabular-nums"
@@ -432,11 +450,8 @@ export function JobWorkForm({
             <Input
               id="computerDesignNo"
               name="computerDesignNo"
-              placeholder="4402"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={20}
-              title="Numbers only"
+              placeholder="4402-B"
+              maxLength={40}
               value={draft.computerDesignNo}
               onChange={(e) => setDraft((d) => ({ ...d, computerDesignNo: e.target.value }))}
               className="h-[42px] font-mono tabular-nums"
@@ -582,7 +597,15 @@ export function JobWorkForm({
             <Select
               name="status"
               value={draft.status}
-              onValueChange={(v) => handleStatusChange(v as JobWorkStatus)}
+              onValueChange={(v) => {
+                // Same guard as Party and Silai Karigar. Status happens to
+                // survive the post-action reset today because it starts on
+                // "Pending", so the reset is a no-op — but that is luck, not
+                // design, and it does not hold on the edit form where the
+                // status can start anywhere.
+                if (!v) return;
+                handleStatusChange(v as JobWorkStatus);
+              }}
             >
               <SelectTrigger id="status" className="h-[42px] w-full">
                 <SelectValue placeholder="Select status" />

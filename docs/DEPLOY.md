@@ -138,15 +138,59 @@ the limit exists.
 
 ---
 
+## Two databases: one live, one for your laptop
+
+**Your laptop must never point at the database your brother is using.** He is
+entering real job works now, and local work means seeding, wiping and failed
+experiments. There is no undo on his records.
+
+So there are two databases, both free, both inside the same Neon project:
+
+| Database | Who uses it | Where the URL lives |
+|---|---|---|
+| `neondb` | the live site, your brother | Vercel → Settings → Environment Variables |
+| `jainam_dev` | your laptop, `npm run dev`, the test suite | `.env.local` (git-ignored) |
+
+Nothing in the repository points at `neondb`. `.env.local` holds the
+`jainam_dev` URL, and Vercel holds the live one — they never meet.
+
+Two guards back this up, because a convention nobody enforces is not a guard:
+
+- `npm run seed:demo` **refuses to run** if `DATABASE_URL` names `neondb`.
+- The seed targets an account by name (`npm run seed:demo -- <username>`),
+  defaulting to `devowner`, so it cannot silently land on whoever happens to
+  be first in the table.
+
+### Making the local database again (if you ever start fresh)
+
+```bash
+# 1. create it (any Postgres client, or the Neon console's SQL editor)
+#    CREATE DATABASE jainam_dev;
+# 2. point .env.local's DATABASE_URL at it — change ONLY the name after the
+#    last "/", leave host, user and password exactly as they are
+# 3. create the tables and the accounts
+npm run db:migrate
+npm run user:create -- devowner <a password>
+npm run seed:demo                      # optional: realistic data to click around
+```
+
+### If you need to look at the live data
+
+Don't point `.env.local` at it. Use the Neon console's SQL editor, which is
+read-only unless you deliberately write, and leaves your local setup alone.
+
 ## Running the test suite after handover
 
-`npm run ui:test` needs an account of its own. It **creates and deletes** rows
-as it runs — parties, karigars and work types named `ZZ Test …` — so pointing
-it at your brother's account would write test data into live records.
+`npm run ui:test` needs an account of its own **in `jainam_dev`**. It
+**creates and deletes** rows as it runs — parties, karigars and work types
+named `ZZ Test …` — so pointing it at your brother's account would write test
+data into live records.
 
 ```bash
 npm run user:create -- uitest <a password>
-set UI_USER=uitest & set UI_PASS=<that password> & npm run ui:test
+npm run seed:demo -- uitest            # the suite needs data to test against
 ```
+
+Then put `UI_USER` and `UI_PASS` in `.env.local` and run `npm run ui:test`.
 
 The suite cleans up its own rows when it finishes, pass or fail.

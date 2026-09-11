@@ -26,8 +26,9 @@
 // requirement.
 import { createId } from "@paralleldrive/cuid2";
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Check, Copy, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { copyText } from "@/lib/copy-text";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -72,6 +73,24 @@ export function DescriptionRows({
       : [newRow()]
   );
   const [addingTypeForRow, setAddingTypeForRow] = useState<string | null>(null);
+
+  // The chosen work types are locked inside dropdown triggers, so they cannot
+  // be selected with a cursor — the owner wanted to paste them into the
+  // Comments box and simply could not get at the text. These buttons hand it
+  // over instead. `copiedKey` is "all" or a row key, and clears itself so the
+  // tick does not stay on forever.
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const nameOf = (id: string) => availableTypes.find((t) => t.id === id)?.name ?? "";
+
+  async function copyAndFlag(key: string, text: string) {
+    if (!text) return;
+    const ok = await copyText(text);
+    if (!ok) return;
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey((c) => (c === key ? null : c)), 1600);
+  }
+
+  const chosenNames = rows.map((r) => nameOf(r.descriptionTypeId)).filter(Boolean);
 
   function emitRows(next: Row[]) {
     onRowsChange(
@@ -131,19 +150,20 @@ export function DescriptionRows({
           one record, and the old layout gave the dropdown ~85% of the width
           while the price — the number that decides the rate — got a stub. */}
       <div className="overflow-hidden rounded-[12px] border border-border">
-        <div className="grid grid-cols-[1fr_150px_44px] items-center gap-2 border-b border-border bg-muted/40 px-3 py-2">
+        <div className="grid grid-cols-[1fr_130px_44px] sm:grid-cols-[1fr_130px_36px_44px] items-center gap-2 border-b border-border bg-muted/40 px-3 py-2">
           <span className="text-[11px] font-medium uppercase tracking-[0.09em] text-muted-foreground">
             Type of work
           </span>
           <span className="text-right text-[11px] font-medium uppercase tracking-[0.09em] text-muted-foreground">
             Price (₹)
           </span>
+          <span className="sr-only">Copy</span>
           <span className="sr-only">Remove</span>
         </div>
 
         {rows.map((row, i) => (
           <div key={row.key} className="border-b border-border last:border-0">
-            <div className="grid grid-cols-[1fr_150px_44px] items-center gap-2 px-3 py-2">
+            <div className="grid grid-cols-[1fr_130px_44px] sm:grid-cols-[1fr_130px_36px_44px] items-center gap-2 px-3 py-2">
               <Select
                 name="descriptionTypeId"
                 value={row.descriptionTypeId}
@@ -204,6 +224,32 @@ export function DescriptionRows({
                 type="button"
                 variant="ghost"
                 size="icon"
+                aria-label={
+                  nameOf(row.descriptionTypeId)
+                    ? `Copy "${nameOf(row.descriptionTypeId)}"`
+                    : `Copy row ${i + 1} (nothing chosen yet)`
+                }
+                title="Copy this work type"
+                disabled={!row.descriptionTypeId}
+                onClick={() => copyAndFlag(row.key, nameOf(row.descriptionTypeId))}
+                // Hidden on a phone. A fourth column squeezed "Type of work"
+                // down to 83px on a 390px screen — measured — which is not
+                // wide enough for a name like "Mirror work". The Copy all
+                // button below covers the same need at any width, and that
+                // is the one he reaches for anyway when filling Comments.
+                className="hidden size-9 shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-30 sm:inline-flex"
+              >
+                {copiedKey === row.key ? (
+                  <Check size={14} className="text-status-completed" />
+                ) : (
+                  <Copy size={14} />
+                )}
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
                 aria-label={`Remove row ${i + 1}`}
                 onClick={() => removeRow(row.key)}
                 disabled={rows.length === 1}
@@ -245,8 +291,33 @@ export function DescriptionRows({
         </button>
       </div>
 
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 px-1">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-1">
         <span className="text-xs text-muted-foreground">
+          {/* One button for the common case: every type chosen, ready to
+              paste into Comments. Hidden until something is actually chosen,
+              so a blank form does not offer to copy nothing. */}
+          {chosenNames.length > 0 ? (
+            <>
+              <button
+                type="button"
+                onClick={() => copyAndFlag("all", chosenNames.join(", "))}
+                className="inline-flex items-center gap-1 rounded-[6px] px-1.5 py-0.5 font-medium text-primary transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {copiedKey === "all" ? (
+                  <>
+                    <Check size={12} aria-hidden="true" />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy size={12} aria-hidden="true" />
+                    Copy all {chosenNames.length === 1 ? "type" : "types"}
+                  </>
+                )}
+              </button>
+              {" · "}
+            </>
+          ) : null}
           {rows.length} {rows.length === 1 ? "row" : "rows"}
           {canAddRow ? null : (
             <>
